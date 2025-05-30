@@ -1,0 +1,103 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Contextual References
+
+1. Refer to prd.md for overall feature requirements, UI/UX guidelines, and technical specifications *relevant to the current task*.  
+2. Refer to databasedetails.md for database schema, RLS policies, and SQL function/RPC details *when needed by the current task*.  
+3. Refer to task.md to understand the sequence and scope of the current development task.  
+4. Do **not** implement features or details not directly part of the current task as defined in task.md.
+
+## Technical Expertise & Stack
+
+5. You are an expert in **TypeScript, Node.js, Next.js 14 (App Router), React 18, Material UI (MUI) v7, Tailwind CSS, Supabase (Auth, PostgreSQL, Edge Functions, Storage), TanStack Query, and Zustand**.  
+6. Assume the project uses the stack defined in prd.md (TypeScript, Next.js/React, Supabase, TanStack Query, Zustand, Material UI (MUI), Tailwind CSS).
+
+## Code Style and Structure
+
+7. Write concise, technical TypeScript code with accurate examples.  
+8. Use functional and declarative programming patterns; avoid classes unless absolutely necessary.  
+9. Prefer iteration and modularization over code duplication.  
+10. Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError, fetchConversations, createMessage).  
+11. Structure component files: exported component first, then subcomponents (if any), helper functions, static content/constants, and finally type/interface definitions.
+
+## Naming Conventions & File Organization
+
+12. Place all reusable components in src/components. Name component files like new-component.tsx.  
+13. Use lowercase with dashes for directories (e.g., src/components/chat-interface, src/app/admin/users).  
+14. Favor named exports for components: export function MyComponent() {...}.  
+15. Place both the /app and /components folders under a /src directory.  
+16. **Component Organization within src/components:**  
+    * Group components by type (e.g., /ui, /forms, /layout) or by feature (e.g., /chat, /admin-panel, /conversation-management) as appropriate for clarity.  
+    * Example structure:  
+      /src/components  
+      ├── /ui  
+      │   ├── /button  
+      │   ├── /modal  
+      │   └── /card  
+      ├── /forms  
+      │   ├── /text-field  
+      │   └── /select  
+      └── /chat  
+          ├── /chat-list-item.tsx  
+          └── /message-bubble.tsx
+
+17. **Private Components:** For components used only within specific pages/routes, create a \_components folder within the relevant /app subdirectory (e.g., src/app/admin/users/\_components/user-table.tsx).
+
+## TypeScript Usage
+
+18. Use TypeScript for **all** code. Define clear interfaces for props, API responses, and complex objects. Prefer interfaces over types for object shapes and props.  
+19. Use type for unions, intersections, or primitives.  
+20. Avoid TypeScript enums; use string literal unions or as const objects instead (e.g., type Status \= 'open' | 'closed'; or const MESSAGE\_SENDER\_TYPE \= { CUSTOMER: 'customer', AGENT: 'agent'} as const;).  
+21. **Database ENUM Alignment:** Ensure the string literal unions used in the frontend code (e.g., type ConversationStatus \= 'open' | 'closed';) exactly match the possible values defined for the corresponding PostgreSQL ENUM types in databasedetails.md (e.g., public.conversation\_status\_enum).  
+22. Use functional components with typed props: interface MyComponentProps { title: string; } export function MyComponent({ title }: MyComponentProps) {...}.  
+23. Avoid using any unless absolutely necessary and provide justification.
+
+## Syntax and Formatting
+
+24. Use the function keyword for pure functions and React functional components.  
+25. Use concise syntax: avoid unnecessary curly braces in conditionals (if (condition) return value;), use implicit returns for simple arrow functions where appropriate.  
+26. Write declarative JSX, clearly separating logic from presentation.
+
+## UI and Styling
+
+27. Use **Material UI (MUI)** components as the primary building blocks.  
+28. Use **Tailwind CSS** for layout and custom styling as needed alongside MUI.  
+29. Implement responsive design using Tailwind's breakpoint modifiers (sm:, md:, lg:, etc.). Adopt a mobile-first approach where practical.
+
+## Performance Optimization
+
+30. Minimize 'use client'; favor React Server Components (RSC) where possible, especially for data fetching and non-interactive content. Follow Next.js App Router conventions.  
+31. Wrap client components needing data or time to render in \<Suspense\> with appropriate fallbacks (e.g., skeleton loaders from MUI).  
+32. Use next/dynamic for dynamic loading of large or non-critical client components.  
+33. Optimize images: use next/image, provide width and height, consider modern formats like WebP/AVIF if feasible, implement lazy loading (default with next/image).
+
+## Key Conventions & Libraries
+
+34. Use **TanStack Query (React Query)** for all server state management (data fetching, caching, mutations), including interactions with Supabase Edge Functions and direct Supabase client calls.  
+35. **Supabase RPC & Edge Function Usage:**  
+    * Prefer calling designated Supabase **Edge Functions** for frontend actions (e.g., send-message, update-conversation-status, assign-conversation, initiate-bulk-send). Edge Functions often wrap SQL RPC calls.  
+    * When Edge Functions call SQL RPCs, ensure they use the specific functions detailed in databasedetails.md (e.g., public.insert\_message, public.set\_conversation\_status, public.assign\_conversation\_and\_update\_related, public.initiate\_bulk\_send\_campaign, public.get\_or\_create\_conversation\_for\_contact).  
+    * For admin CRUD operations on business\_whatsapp\_numbers, direct database interaction from the frontend Supabase client is permitted, secured by RLS, as per prd.md (Sec 6.2).  
+36. Use nuqs or standard URLSearchParams/useSearchParams for managing state reflected in URL search parameters if needed.  
+37. Optimize Core Web Vitals (LCP, CLS, INP).  
+38. Follow Next.js documentation closely for Data Fetching, Rendering, Caching, and Routing within the App Router.  
+39. Use https://placehold.co/ or similar for placeholder images if needed during development, not placekitten.com. Example: https://placehold.co/600x400/EEE/31343C?text=Placeholder  
+40. Ensure all Supabase client interactions (select, insert, update, delete, rpc, storage calls from frontend or Edge Functions) are properly handled, including error handling and state updates, often managed via TanStack Query.
+
+## Error Handling
+
+41. Handle errors returned from Supabase calls (direct client calls, Edge Functions, or RPCs invoked by them). Refer to prd.md (Sec 6.7) for general error handling strategies.  
+42. Parse error structures from Edge Functions or Supabase client responses in the frontend to display user-friendly messages (e.g., using MUI Snackbar/Alert) or guide retry logic.  
+43. Handle common cases like RLS denials, not found errors, and validation errors based on application logic and responses from backend services.
+
+## Client-Side State Management
+
+44. For client-side state (e.g., form inputs, UI toggles), prefer using standard React hooks (useState, useReducer).  
+45. Use **Zustand** if shared client state becomes complex across many components, as specified in prd.md (Sec 4).
+
+## Workflow & Task Management
+
+46. **Task Completion Tracking:** Upon successfully generating code for a specific task or sub-task outlined in task.md, **automatically edit the task.md file** to mark the corresponding item as complete by changing its prefix from \[ \] to \[x\]. Identify the task/sub-task accurately before making the change.
