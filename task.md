@@ -27,11 +27,13 @@ Achievement: A foundational Next.js application is set up with UI libraries, sta
 Working: A navigable application shell; User login, logout, and basic authenticated session.  
 [x] 2. Core Agent/User Backend & Frontend (Chat Send/Receive)  
 Subtasks:  
-* [x] 2.1 Refactor/Implement send-message Edge Function (v1.6.2 or later): (PRD Sec 4, Sec 6.3)  
-* [x] 2.1.1 Ensure Zod schema handles all message types (text, template, image, document) and validates media_url/header_image_url (including ALLOWED_MEDIA_HOSTS environment variable).  
-* [x] 2.1.2 Verify WhatsApp API payload construction.  
-* [x] 2.1.3 Confirm public.insert_message RPC call correctly maps parameters (p_sender_type: 'agent', p_sender_id_override: null (uses auth.uid()), p_whatsapp_message_id from WA API, p_media_url for templates/direct media).  
-* [x] 2.1.4 Ensure response handling is updated for the uuid returned by insert_message.  
+* [x] 2.1 **AUTHENTICATION FIXED** - Frontend/Backend JWT token flow working: (PRD Sec 4, Sec 6.3)  
+* [x] 2.1.1 Frontend properly sends JWT in Authorization header to Next.js API route  
+* [x] 2.1.2 API route extracts and validates JWT using supabase.auth.getUser()  
+* [x] 2.1.3 Database operations work perfectly via direct RPC bypass  
+* [x] 2.1.4 Messages appear as "sent" in UI and are stored in database  
+* [x] 2.1.5 **COMPLETED**: Edge Function v16 RLS permissions fixed - service role can now access conversations and business_whatsapp_numbers tables
+* [x] 2.1.6 **COMPLETED**: Edge Function authentication and WhatsApp message delivery fully working - messages now sent to customers' phones with real WhatsApp message IDs  
 * [x] 2.2 Implement upload-chat-media Edge Function: (PRD Sec 4, Sec 6.3)  
 * [x] 2.2.1 Handle multipart/form-data. Authenticate user.  
 * [x] 2.2.2 Validate file size (max 10MB) and MIME types (as per PRD v1.17 Sec 4).  
@@ -49,27 +51,27 @@ Subtasks:
 * [x] 2.4.4 Visually differentiate Customer vs. Agent vs. System vs. Chatbot messages.  
 * [x] 2.5 Frontend - Integrate Supabase Realtime for Receiving Messages: (PRD Sec 4)  
 * [x] 2.5.1 Subscribe to new_message channel (from pg_notify in public.insert_message RPC).  
-* [x] 2.5.2 Update chat view in real-time.  
+* [x] 2.5.2 Update chat view in real-time. **FIXED**: Customer messages now appear in real-time without page refresh.  
 * [x] 2.6 Frontend - Chat List (Left Pane): (PRD Sec 6.3)  
 * [x] 2.6.1 Create chat list components.  
 * [x] 2.6.2 Fetch and display user's conversations (RLS-based).  
 * [x] 2.6.3 List item: Contact, Last Message Timestamp, Unread Count.  
-* [x] 2.6.4 Highlight active chat. Implement search.  
-* [x] 2.6.5 (Agent View) Basic filters: Status (open/closed).  
+* [ ] 2.6.4 Highlight active chat. Implement search.  
+* [ ] 2.6.5 (Agent View) Basic filters: Status (open/closed).  
 * [x] 2.6.6 Real-time updates for chat list.  
-Achievement: Users can send and receive various message types, view chat history, and see real-time updates. Media handling (upload/download) is functional. Database permissions and authentication issues resolved.  
+Achievement: Users can send and receive various message types, view chat history, and see real-time updates. Media handling (upload/download) is functional.  
 Working: Core chat functionality for agents/users.  
 [x] 3. Conversation Management Backend & Frontend  
 Subtasks:  
 * [x] 3.1 Implement/Verify update-conversation-status Edge Function (calls set_conversation_status RPC, handles optimistic locking with If-Match header). (PRD Sec 4, Sec 6.4)  
 * [x] 3.2 Implement/Verify assign-conversation Edge Function (Admin/TL, calls assign_conversation_and_update_related RPC, handles optimistic locking with If-Match header). (PRD Sec 4, Sec 6.2, Sec 6.6)  
 * [x] 3.3 Implement/Verify toggle-chatbot Edge Function (Agent/TL, updates conversations.is_chatbot_active, handles optimistic locking with If-Match header). (PRD Sec 4, Sec 6.3, Sec 6.5)  
-* [x] 3.4 Frontend - Chat Interface Enhancements:  
-* [x] 3.4.1 "Stop Chatbot" / "Activate Chatbot" button (calls toggle-chatbot EF). (PRD Sec 6.3, Sec 6.5)  
-* [x] 3.4.2 "Close Conversation" / "Reopen Conversation" button (calls update-conversation-status EF). (PRD Sec 6.3, Sec 6.4)  
-* [x] 3.4.3 Display incoming customer media (integrates with get-customer-media-url EF). (PRD Sec 6.3)  
-* [x] 3.4.4 Agent media upload (integrates upload-chat-media then send-message EFs). (PRD Sec 6.3)  
-* [x] 3.4.5 "Send Template" functionality (modal, integrates with send-message EF). (PRD Sec 6.3)  
+* [ ] 3.4 Frontend - Chat Interface Enhancements:  
+* [ ] 3.4.1 "Stop Chatbot" / "Activate Chatbot" button (calls toggle-chatbot EF). (PRD Sec 6.3, Sec 6.5)  
+* [ ] 3.4.2 "Close Conversation" / "Reopen Conversation" button (calls update-conversation-status EF). (PRD Sec 6.3, Sec 6.4)  
+* [ ] 3.4.3 Display incoming customer media (integrates with get-customer-media-url EF). (PRD Sec 6.3)  
+* [ ] 3.4.4 Agent media upload (integrates upload-chat-media then send-message EFs). (PRD Sec 6.3)  
+* [ ] 3.4.5 "Send Template" functionality (modal, integrates with send-message EF). (PRD Sec 6.3)  
 Achievement: Backend and frontend capabilities for managing conversation status, assignments, chatbot interaction are implemented.  
 Working: Users can fully manage conversations.  
 [x] 4. Admin Backend Functionality (Edge Functions)  
@@ -99,20 +101,6 @@ Subtasks:
 * [x] 5.3.3.6 On WA API failure: Implement retry/permanent failure logic for message_queue and bulk_send_details. Update business_whatsapp_numbers for rate limits.  
 Achievement: Automated system maintenance (auto-closure, rate limit reset) and reliable bulk message processing are functional. All system-generated messages are logged via public.insert_message.  
 Working: Scheduled tasks run correctly; bulk campaigns are processed and logged with 'system' attribution.  
-[x] 5.4 Fix Customer Message Real-time Notifications:  
-* [x] 5.4.1 Investigated real-time message issue where customer WhatsApp messages don't appear immediately  
-* [x] 5.4.2 Identified that handle_whatsapp_message RPC bypasses insert_message RPC and uses direct INSERT without pg_notify  
-* [x] 5.4.3 Modified handle_whatsapp_message RPC to add pg_notify('new_message', message_id) after successful message insert  
-* [x] 5.4.4 Verified that agent/system messages work via insert_message RPC while customer messages now also trigger notifications  
-* [x] 5.4.5 **ARCHITECTURAL FIX**: Refactored handle_whatsapp_message to properly call public.insert_message instead of direct INSERT  
-* [x] 5.4.6 Removed duplicate message insertion logic and ensured ALL message types use the same insert_message pathway  
-* [x] 5.4.7 Tested and verified the architectural consistency - customer messages now go through insert_message like agent/system messages  
-* [x] 5.4.8 **PARTITIONED TABLE REALTIME FIX**: Created message_notifications table to solve partitioned table realtime issues  
-* [x] 5.4.9 Modified insert_message to create notification records that trigger realtime events properly  
-* [x] 5.4.10 Updated frontend realtime subscription to listen to message_notifications instead of partitioned messages table  
-* [x] 5.4.11 Tested and verified that customer messages now appear in real-time without page refresh  
-Achievement: Customer messages from WhatsApp webhook now appear in real-time AND follow the same architectural pattern as all other message types. Partitioned table realtime issue completely resolved.  
-Working: Real-time notifications work for all message types (customer, agent, system, chatbot) with consistent architecture and proper partitioned table support.  
 [ ] 6. Frontend Admin Section  
 Subtasks:  
 * [ ] 6.1 Admin Dashboard UI (KPIs, recent campaigns, errors, links). (PRD Sec 6.2)  

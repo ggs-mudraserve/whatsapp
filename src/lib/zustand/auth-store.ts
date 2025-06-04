@@ -122,25 +122,12 @@ export const useAuthStore = create<AuthStore>()(
 
     initializeAuth: async () => {
       try {
-        console.log('Auth Store: Starting initialization...')
         const supabase = createClient()
-        
-        console.log('Auth Store: Getting session...')
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError) {
-          console.error('Auth Store: Session error:', sessionError)
-          set({ isLoading: false })
-          return
-        }
-
-        console.log('Auth Store: Session retrieved:', session ? 'User logged in' : 'No session')
+        const { data: { session } } = await supabase.auth.getSession()
 
         if (session?.user) {
-          console.log('Auth Store: Fetching user profile...')
           const profile = await get().fetchUserProfile(session.user.id)
           if (profile) {
-            console.log('Auth Store: Profile fetched successfully')
             set({
               user: profile,
               session,
@@ -148,18 +135,14 @@ export const useAuthStore = create<AuthStore>()(
               isLoading: false,
             })
           } else {
-            console.log('Auth Store: No profile found')
             set({ isLoading: false })
           }
         } else {
-          console.log('Auth Store: No user session')
           set({ isLoading: false })
         }
 
-        console.log('Auth Store: Setting up auth state change listener...')
         // Set up auth state change listener
         supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth Store: Auth state changed:', event)
           if (event === 'SIGNED_IN' && session?.user) {
             const profile = await get().fetchUserProfile(session.user.id)
             if (profile) {
@@ -179,7 +162,6 @@ export const useAuthStore = create<AuthStore>()(
             })
           }
         })
-        console.log('Auth Store: Initialization completed successfully')
       } catch (err) {
         console.error('Auth initialization error:', err)
         set({ isLoading: false })

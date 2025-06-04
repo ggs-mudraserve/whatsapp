@@ -11,28 +11,26 @@ import {
   Box,
   Avatar,
   Chip,
-  useMediaQuery,
-  useTheme,
+  Tooltip,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
   AccountCircle,
   Logout,
-  MenuOpen,
+  ChevronLeft,
+  ChevronRight,
 } from '@mui/icons-material'
 import { useAuthStore } from '@/lib/zustand/auth-store'
 
 interface AppHeaderProps {
-  onMenuClick: () => void // Mobile menu toggle
-  onDesktopMenuClick?: () => void // Desktop sidebar toggle
-  desktopOpen?: boolean // Desktop sidebar state
+  onMenuClick: () => void
+  onSidebarToggle: () => void
+  sidebarCollapsed: boolean
 }
 
-export function AppHeader({ onMenuClick, onDesktopMenuClick, desktopOpen }: AppHeaderProps) {
+export function AppHeader({ onMenuClick, onSidebarToggle, sidebarCollapsed }: AppHeaderProps) {
   const { user, signOut } = useAuthStore()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
@@ -60,30 +58,32 @@ export function AppHeader({ onMenuClick, onDesktopMenuClick, desktopOpen }: AppH
     }
   }
 
-  const handleMenuClick = () => {
-    if (isMobile) {
-      onMenuClick() // Mobile drawer toggle
-    } else {
-      onDesktopMenuClick?.() // Desktop sidebar toggle
-    }
-  }
-
   return (
     <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
       <Toolbar>
+        {/* Mobile menu button */}
         <IconButton
           color="inherit"
-          aria-label="toggle sidebar"
-          onClick={handleMenuClick}
+          aria-label="open drawer"
+          onClick={onMenuClick}
           edge="start"
-          sx={{ 
-            mr: 2,
-            // Show different opacity based on sidebar state
-            opacity: isMobile ? 1 : (desktopOpen ? 1 : 0.7)
-          }}
+          sx={{ mr: 2, display: { sm: 'none' } }}
         >
-          {isMobile ? <MenuIcon /> : (desktopOpen ? <MenuOpen /> : <MenuIcon />)}
+          <MenuIcon />
         </IconButton>
+
+        {/* Desktop sidebar toggle button */}
+        <Tooltip title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          <IconButton
+            color="inherit"
+            aria-label="toggle sidebar"
+            onClick={onSidebarToggle}
+            edge="start"
+            sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}
+          >
+            {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
+          </IconButton>
+        </Tooltip>
 
         <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
           WhatsApp Cloud API

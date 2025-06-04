@@ -1,148 +1,139 @@
-// Chat-related TypeScript types based on PRD v1.17
+// Database types matching the schema from detaildatabase.md
 
-export type MessageSenderType = 'customer' | 'agent' | 'system' | 'chatbot'
-
+export type UserRole = 'admin' | 'team_leader' | 'agent' | 'backend' | 'system' | 'chatbot'
+export type SegmentType = 'PL' | 'BL' | 'PL_Digital' | 'BL_Digital'
 export type ConversationStatus = 'open' | 'closed'
+export type MessageSenderType = 'customer' | 'agent' | 'chatbot' | 'system'
+export type MessageContentType = 'text' | 'image' | 'document' | 'template' | 'system_notification' | 'audio' | 'video' | 'sticker' | 'location' | 'contacts' | 'interactive' | 'button' | 'order' | 'unknown'
+export type MessageDeliveryStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed' | 'received'
 
 export interface Message {
   id: string
   conversation_id: string
-  sender_type: MessageSenderType
-  sender_id: string | null
-  sender_id_override?: string | null
-  text_content: string
   whatsapp_message_id: string | null
-  media_url?: string | null
-  customer_media_mime_type?: string | null
-  customer_media_filename?: string | null
-  template_name_used?: string | null
-  template_variables_used?: any
+  sender_type: MessageSenderType
+  sender_id: string
+  content_type: MessageContentType
+  text_content: string | null
+  media_url: string | null
+  customer_media_whatsapp_id: string | null
+  customer_media_mime_type: string | null
+  customer_media_filename: string | null
+  template_name_used: string | null
+  template_variables_used: Record<string, any> | null
   timestamp: string
-  status: string
-  error_message?: string | null
-  // Backwards compatibility aliases
-  content?: string
-  media_type?: string | null
-  media_filename?: string | null
-  created_at?: string
-  updated_at?: string
-  is_read?: boolean
+  status: MessageDeliveryStatus
+  error_message: string | null
 }
 
 export interface Conversation {
   id: string
+  lead_id: string | null
   contact_e164_phone: string
-  status: ConversationStatus
-  is_chatbot_active: boolean
-  assigned_agent_id: string | null
   business_whatsapp_number_id: string
-  segment: string
+  segment: SegmentType
+  assigned_agent_id: string | null
+  is_chatbot_active: boolean
+  status: ConversationStatus
+  version: number
   last_message_at: string | null
+  last_customer_message_at: string | null
+  tags: string[]
   created_at: string
   updated_at: string
-  version: number
-  leads: {
-    first_name: string | null
-    last_name: string | null
-  }[]
 }
 
-export interface Contact {
+export interface BusinessWhatsappNumber {
   id: string
-  phone_e164: string
-  name?: string | null
-  lead_id?: string | null
+  waba_phone_number_id: string
+  display_number: string
+  segment: SegmentType
+  friendly_name: string | null
+  chatbot_identifier: string
+  chatbot_endpoint_url: string | null
+  is_active: boolean
+  access_token: string | null
+  current_mps_target: number | null
+  mps_target_updated_at: string | null
+  is_rate_capped_today: boolean
+  created_at: string
+  updated_at: string
 }
 
-// For message sending
-export interface SendMessageRequest {
-  conversation_id: string
-  content: string
-  message_type?: 'text' | 'template' | 'image' | 'document'
-  media_url?: string | null
-  template_id?: string | null
-  template_variables?: Record<string, string>
+export interface Profile {
+  id: string
+  email: string | null
+  first_name: string | null
+  last_name: string | null
+  role: UserRole
+  segment: SegmentType | null
+  is_active: boolean
+  present_today: boolean
+  last_chat_assigned_at: string | null
 }
 
-export interface SendMessageResponse {
-  message_id: string
-  whatsapp_message_id: string
-  success: boolean
-  error?: string
+export interface Lead {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  mobile_number: string
+  email: string | null
+  segment: SegmentType | null
+  lead_owner: string | null
+  lead_source: string | null
+  status: string | null
+  created_at: string
+  updated_at: string
 }
 
-// For infinite scroll pagination
-export interface MessagesPage {
-  data: Message[]
-  nextCursor?: string | null
-  prevCursor?: string | null
-  hasMore: boolean
-}
-
-export interface ConversationsPage {
-  data: Conversation[]
-  nextCursor?: string | null
-  hasMore: boolean
-}
-
-// For real-time updates
+// For realtime notifications
 export interface MessageNotification {
-  type: 'new_message' | 'message_updated' | 'conversation_updated'
+  id: string
+  message_id: string
+  created_at: string
+}
+
+// Enhanced conversation type with related data for UI
+export interface ConversationWithDetails extends Conversation {
+  lead?: Lead | null
+  business_whatsapp_number?: BusinessWhatsappNumber | null
+  assigned_agent?: Profile | null
+  last_message?: Message | null
+  unread_count?: number
+}
+
+// Message with sender details for UI
+export interface MessageWithDetails extends Message {
+  sender_profile?: Profile | null
+  is_own_message?: boolean
+}
+
+// Send message payload types
+export interface SendMessagePayload {
   conversation_id: string
-  message?: Message
-  conversation?: Partial<Conversation>
+  type: MessageContentType
+  // Text message fields
+  text_content?: string
+  // Template message fields
+  template_name?: string
+  template_language?: string
+  template_variables?: Record<string, any>
+  header_image_url?: string
+  // Media message fields
+  media_url?: string
+}
+
+// Message grouping for UI display
+export interface MessageGroup {
+  date: string
+  messages: MessageWithDetails[]
 }
 
 // Chat interface state
 export interface ChatState {
   selectedConversationId: string | null
+  conversations: ConversationWithDetails[]
+  messages: Record<string, Message[]>
   isLoading: boolean
   error: string | null
-}
-
-// Template-related types
-export interface MessageTemplate {
-  id: string
-  name: string
-  category: string
-  language: string
-  status: string
-  components: TemplateComponent[]
-}
-
-export interface TemplateComponent {
-  type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS'
-  parameters?: TemplateParameter[]
-  text?: string
-}
-
-export interface TemplateParameter {
-  type: 'text' | 'image' | 'document'
-  text?: string
-  image?: { link: string }
-  document?: { link: string; filename: string }
-}
-
-// Media upload types
-export interface MediaUploadResponse {
-  media_url: string
-  path: string
-  mime_type: string
-  size: number
-}
-
-export const ALLOWED_MEDIA_TYPES = [
-  'image/jpeg',
-  'image/png', 
-  'image/gif',
-  'image/webp',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-] as const
-
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB 
+} 

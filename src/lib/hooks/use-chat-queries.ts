@@ -1,451 +1,379 @@
 'use client'
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/lib/zustand/auth-store'
 import type { 
   Conversation, 
+  ConversationWithDetails, 
   Message, 
-  SendMessageRequest, 
-  SendMessageResponse, 
-  MessageTemplate,
-  ConversationStatus 
+  MessageWithDetails, 
+  SendMessagePayload 
 } from '@/lib/types/chat'
-import type { ConversationFilters } from '@/components/chat/conversation-filters'
 
-// Create Supabase client
-const supabase = createClient()
-
-// Query keys for consistent caching
+// Query key factory
 export const chatQueryKeys = {
-  conversations: ['conversations'] as const,
-  conversationsList: (filters?: ConversationFilters) => 
-    [...chatQueryKeys.conversations, 'list', filters] as const,
-  conversation: (id: string) => [...chatQueryKeys.conversations, id] as const,
-  messages: ['messages'] as const,
-  messagesList: (conversationId: string) => [...chatQueryKeys.messages, conversationId] as const,
-  templates: ['templates'] as const,
+  all: ['chat'] as const,
+  conversations: () => [...chatQueryKeys.all, 'conversations'] as const,
+  conversation: (id: string) => [...chatQueryKeys.conversations(), id] as const,
+  messages: (conversationId: string) => [...chatQueryKeys.all, 'messages', conversationId] as const,
 }
 
-// Fetch conversations with pagination
-export function useConversations(filters?: ConversationFilters) {
-  const { isAuthenticated, isLoading, session } = useAuthStore()
-  
-  return useInfiniteQuery({
-    queryKey: chatQueryKeys.conversationsList(filters),
-    queryFn: async ({ pageParam = 0 }) => {
-      // Double-check session before making query
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('Session error in conversations query:', sessionError)
-        throw new Error(`Authentication error: ${sessionError.message}`)
-      }
+// Hook to fetch user's conversations
+export function useConversations() {
+  const supabase = createClient()
+  const { user, session } = useAuthStore()
 
-      if (!currentSession?.access_token) {
-        console.error('No valid session found in conversations query')
-        throw new Error('Authentication required. Please log in again.')
+  return useQuery({
+    queryKey: chatQueryKeys.conversations(),
+    queryFn: async (): Promise<ConversationWithDetails[]> => {
+      if (!session?.access_token) {
+        console.log('❌ No session token available for conversations query')
+        throw new Error('Authentication required')
       }
 
       console.log('Conversations query - Session validated:', {
-        userId: currentSession.user?.id,
-        hasToken: !!currentSession.access_token,
-        expiresAt: currentSession.expires_at,
-        tokenPreview: currentSession.access_token?.substring(0, 50) + '...'
+        userId: user?.id,
+        hasToken: !!session.access_token,
+        expiresAt: session.expires_at,
+        tokenPreview: session.access_token?.substring(0, 50) + '...'
       })
 
-      // Try a direct fetch to see if the issue is with Supabase client
+      // Test direct fetch first for debugging
       console.log('🔍 Testing direct fetch to conversations...')
-      const testResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/conversations?select=id&limit=1`, {
-        headers: {
-          'Authorization': `Bearer ${currentSession.access_token}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          'Content-Type': 'application/json',
+      const directResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/conversations?select=id&limit=1`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            'Content-Type': 'application/json'
+          }
         }
-      })
+      )
       
       console.log('🔍 Direct fetch test result:', {
-        status: testResponse.status,
-        statusText: testResponse.statusText,
-        url: testResponse.url
+        status: directResponse.status,
+        statusText: directResponse.statusText,
+        url: directResponse.url
       })
 
-      if (!testResponse.ok) {
-        const errorText = await testResponse.text()
-        console.error('❌ Direct fetch error:', errorText)
-        throw new Error(`Direct API call failed: ${testResponse.status} ${testResponse.statusText} - ${errorText}`)
+      if (directResponse.ok) {
+        const directData = await directResponse.json()
+        console.log('✅ Direct fetch success:', directData)
       } else {
-        const testData = await testResponse.json()
-        console.log('✅ Direct fetch success:', testData)
+        const directError = await directResponse.text()
+        console.log('❌ Direct fetch failed:', directError)
       }
 
-      // Now try with Supabase client
+      // Now test Supabase client
       console.log('🔍 Testing Supabase client...')
-      let query = supabase
+
+      try {
+        // Test basic connectivity first
+        const { data: testData, error: testError, count } = await supabase
+          .from('conversations')
+          .select('id, contact_e164_phone, status, segment, assigned_agent_id', { count: 'exact' })
+          .limit(10)
+
+        console.log('🔍 Executing Supabase query...')
+
+        if (testError) {
+          console.log('❌ Supabase test query failed:', testError)
+          throw testError
+        } else {
+          console.log('✅ Supabase query success:', {
+            count,
+            firstItem: testData?.[0]
+          })
+        }
+
+        // Now execute the full query with joins
+        const { data, error } = await supabase
+          .from('conversations')
+          .select(`
+            id,
+            lead_id,
+            contact_e164_phone,
+            business_whatsapp_number_id,
+            segment,
+            assigned_agent_id,
+            is_chatbot_active,
+            status,
+            version,
+            last_message_at,
+            last_customer_message_at,
+            tags,
+            created_at,
+            updated_at,
+            lead:leads(
+              id,
+              first_name,
+              last_name,
+              mobile_number
+            ),
+            business_whatsapp_number:business_whatsapp_numbers(
+              id,
+              display_number,
+              friendly_name,
+              chatbot_identifier,
+              chatbot_endpoint_url
+            ),
+            assigned_agent:profile(
+              id,
+              first_name,
+              last_name,
+              email,
+              role
+            )
+          `)
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+
+        if (error) {
+          console.error('❌ Conversations query error:', error)
+          throw error
+        }
+
+        console.log('✅ Conversations query successful:', data?.length, 'conversations')
+        
+        // Transform the data to match our types (Supabase joins return arrays, we want single objects)
+        const transformedData = (data || []).map(conversation => ({
+          ...conversation,
+          lead: Array.isArray(conversation.lead) ? conversation.lead[0] || null : conversation.lead,
+          business_whatsapp_number: Array.isArray(conversation.business_whatsapp_number) 
+            ? conversation.business_whatsapp_number[0] || null 
+            : conversation.business_whatsapp_number,
+          assigned_agent: Array.isArray(conversation.assigned_agent) 
+            ? conversation.assigned_agent[0] || null 
+            : conversation.assigned_agent,
+        })) as ConversationWithDetails[]
+        
+        return transformedData
+      } catch (error) {
+        console.error('❌ Supabase client error:', error)
+        throw error
+      }
+    },
+    enabled: !!user && !!session?.access_token,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: false,
+  })
+}
+
+// Hook to fetch messages for a specific conversation with infinite loading
+export function useMessages(conversationId: string | null) {
+  const supabase = createClient()
+  const { user, session } = useAuthStore()
+
+  return useInfiniteQuery({
+    queryKey: chatQueryKeys.messages(conversationId || ''),
+    queryFn: async ({ pageParam = 0 }): Promise<MessageWithDetails[]> => {
+      if (!conversationId) {
+        return []
+      }
+
+      if (!session?.access_token) {
+        throw new Error('Authentication required')
+      }
+
+      console.log('📨 Fetching messages for conversation:', conversationId, 'page:', pageParam)
+
+      // Try multiple partitions as messages are time-partitioned
+      const partitionsToCheck = [
+        'messages_y2025m06', // Current month
+        'messages_y2025m05', // Previous month  
+        'messages_y2025m07', // Next month
+        'messages_y2025m08'  // Future month
+      ]
+
+      let allMessages: Message[] = []
+
+      for (const tableName of partitionsToCheck) {
+        try {
+          const { data: partitionMessages, error } = await supabase
+            .from(tableName)
+            .select(`
+              id,
+              conversation_id,
+              whatsapp_message_id,
+              sender_type,
+              sender_id,
+              content_type,
+              text_content,
+              media_url,
+              customer_media_whatsapp_id,
+              customer_media_mime_type,
+              customer_media_filename,
+              template_name_used,
+              template_variables_used,
+              timestamp,
+              status,
+              error_message
+            `)
+            .eq('conversation_id', conversationId)
+            .order('timestamp', { ascending: false })
+            .range(pageParam * 50, (pageParam + 1) * 50 - 1)
+
+          if (!error && partitionMessages) {
+            allMessages.push(...partitionMessages)
+          }
+        } catch (error) {
+          console.log(`Messages not found in partition ${tableName}`)
+        }
+      }
+
+      // Sort by timestamp and add UI-specific properties
+      const sortedMessages = allMessages
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .map((message): MessageWithDetails => ({
+          ...message,
+          is_own_message: message.sender_type === 'agent' && message.sender_id === user?.id,
+        }))
+
+      console.log('✅ Messages loaded:', sortedMessages.length, 'from', partitionsToCheck.length, 'partitions')
+      
+      return sortedMessages
+    },
+    enabled: !!conversationId && !!user && !!session?.access_token,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 50 ? allPages.length : undefined
+    },
+    staleTime: 10 * 1000, // 10 seconds
+    refetchOnWindowFocus: false,
+    initialPageParam: 0,
+  })
+}
+
+// Hook to get a specific conversation by ID
+export function useConversation(conversationId: string | null) {
+  const supabase = createClient()
+  const { user, session } = useAuthStore()
+
+  return useQuery({
+    queryKey: chatQueryKeys.conversation(conversationId || ''),
+    queryFn: async (): Promise<ConversationWithDetails | null> => {
+      if (!conversationId) return null
+
+      if (!session?.access_token) {
+        throw new Error('Authentication required')
+      }
+
+      const { data, error } = await supabase
         .from('conversations')
         .select(`
           id,
+          lead_id,
           contact_e164_phone,
-          status,
-          is_chatbot_active,
-          assigned_agent_id,
           business_whatsapp_number_id,
+          segment,
+          assigned_agent_id,
+          is_chatbot_active,
+          status,
+          version,
           last_message_at,
+          last_customer_message_at,
+          tags,
           created_at,
           updated_at,
-          version,
-          segment
-        `, { count: 'exact' })
-        .order('last_message_at', { ascending: false })
-        .range(pageParam * 20, (pageParam + 1) * 20 - 1)
-
-      // Apply status filter
-      if (filters?.status && filters.status.length > 0) {
-        query = query.in('status', filters.status)
-      }
-
-      // Apply assigned agent filter
-      if (filters?.assignedAgent && filters.assignedAgent.length > 0) {
-        query = query.in('assigned_agent_id', filters.assignedAgent)
-      }
-
-      // Apply business number filter
-      if (filters?.businessNumber && filters.businessNumber.length > 0) {
-        query = query.in('business_whatsapp_number_id', filters.businessNumber)
-      }
-
-      console.log('🔍 Executing Supabase query...')
-      const { data, error } = await query
+          lead:leads(
+            id,
+            first_name,
+            last_name,
+            mobile_number
+          ),
+          business_whatsapp_number:business_whatsapp_numbers(
+            id,
+            display_number,
+            friendly_name,
+            chatbot_identifier,
+            chatbot_endpoint_url
+          ),
+          assigned_agent:profile(
+            id,
+            first_name,
+            last_name,
+            email,
+            role
+          )
+        `)
+        .eq('id', conversationId)
+        .single()
 
       if (error) {
-        console.error('❌ Supabase query error:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        throw new Error(`Failed to fetch conversations: ${error.message}`)
+        console.error('❌ Conversation query error:', error)
+        throw error
       }
 
-      console.log('✅ Supabase query success:', {
-        count: data?.length || 0,
-        firstItem: data?.[0] || null
-      })
+      // Transform the data to match our types
+      const transformedData = {
+        ...data,
+        lead: Array.isArray(data.lead) ? data.lead[0] || null : data.lead,
+        business_whatsapp_number: Array.isArray(data.business_whatsapp_number) 
+          ? data.business_whatsapp_number[0] || null 
+          : data.business_whatsapp_number,
+        assigned_agent: Array.isArray(data.assigned_agent) 
+          ? data.assigned_agent[0] || null 
+          : data.assigned_agent,
+      } as ConversationWithDetails
 
-      return {
-        data: data || [],
-        nextPage: data && data.length === 20 ? pageParam + 1 : undefined,
-      }
+      return transformedData
     },
-    enabled: isAuthenticated && !isLoading && !!session, // Only run when user is authenticated with valid session
-    getNextPageParam: (lastPage) => lastPage.nextPage,
-    initialPageParam: 0,
-    retry: (failureCount, error) => {
-      // Don't retry on auth errors
-      if (error.message.includes('Authentication') || error.message.includes('403')) {
-        return false
-      }
-      return failureCount < 2
-    },
+    enabled: !!conversationId && !!user && !!session?.access_token,
+    staleTime: 60 * 1000, // 1 minute
   })
 }
 
-// Fetch messages for a conversation with infinite scroll (reverse chronological)
-export function useMessages(conversationId: string) {
-  return useInfiniteQuery({
-    queryKey: chatQueryKeys.messagesList(conversationId),
-    queryFn: async ({ pageParam }) => {
-      let query = supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('timestamp', { ascending: true })
-        .limit(50)
-
-      if (pageParam) {
-        query = query.lt('timestamp', pageParam)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        throw new Error(`Failed to fetch messages: ${error.message}`)
-      }
-
-      return {
-        data: data || [],
-        nextCursor: data && data.length === 50 ? data[0].timestamp : undefined,
-      }
-    },
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: !!conversationId,
-    initialPageParam: undefined,
-  })
-}
-
-// Send a message mutation
+// Mutation to send a message
 export function useSendMessage() {
   const queryClient = useQueryClient()
+  const { session } = useAuthStore()
 
   return useMutation({
-    mutationFn: async (request: SendMessageRequest): Promise<SendMessageResponse> => {
-      const { data, error } = await supabase.functions.invoke('send-message', {
-        body: request,
-      })
+    mutationFn: async (payload: SendMessagePayload) => {
+      console.log('📤 Sending message via Next.js API route:', payload)
 
-      if (error) {
-        throw new Error(error.message)
+      // Ensure we have a valid session with access token
+      if (!session?.access_token) {
+        throw new Error('Authentication required - no access token')
       }
 
-      return data as SendMessageResponse
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate and refetch messages for this conversation
-      queryClient.invalidateQueries({
-        queryKey: chatQueryKeys.messagesList(variables.conversation_id)
-      })
-      
-      // Invalidate conversations list to update last message
-      queryClient.invalidateQueries({
-        queryKey: chatQueryKeys.conversations
-      })
-    },
-    onError: (error) => {
-      console.error('Failed to send message:', error)
-    },
-  })
-}
+      console.log('🔐 Using session token for API call, length:', session.access_token.length)
 
-// Upload media mutation
-export function useUploadMedia() {
-  return useMutation({
-    mutationFn: async (file: File): Promise<{ media_url: string; path: string; mime: string; size: number }> => {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const { data, error } = await supabase.functions.invoke('upload-chat-media', {
-        body: formData,
-      })
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      return data
-    },
-    onError: (error) => {
-      console.error('Failed to upload media:', error)
-    },
-  })
-}
-
-// Toggle chatbot mutation
-export function useToggleChatbot() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ conversationId, isActive }: { conversationId: string; isActive: boolean }) => {
-      const { data, error } = await supabase.functions.invoke('toggle-chatbot', {
-        body: { conversation_id: conversationId, is_active: isActive },
-      })
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      return data
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate conversation queries to reflect updated chatbot status
-      queryClient.invalidateQueries({
-        queryKey: chatQueryKeys.conversation(variables.conversationId)
-      })
-      queryClient.invalidateQueries({
-        queryKey: chatQueryKeys.conversations
-      })
-    },
-    onError: (error) => {
-      console.error('Failed to toggle chatbot:', error)
-    },
-  })
-}
-
-// Update conversation status mutation
-export function useUpdateConversationStatus() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ conversationId, status, etag }: { conversationId: string; status: ConversationStatus; etag: string }) => {
-      const { data, error } = await supabase.functions.invoke('update-conversation-status', {
-        body: { conversation_id: conversationId, status },
+      // Call the Next.js API route with proper Authorization header
+      const response = await fetch('/api/send-message', {
+        method: 'POST',
         headers: {
-          'If-Match': etag,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify(payload),
       })
 
-      if (error) {
-        throw new Error(error.message)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ API route call failed:', errorText)
+        throw new Error(errorText || 'Failed to send message')
       }
 
-      return data
+      const result = await response.json()
+      console.log('✅ API route call success:', result)
+      return result
     },
     onSuccess: (data, variables) => {
-      // Invalidate conversation queries to reflect updated status
-      queryClient.invalidateQueries({
-        queryKey: chatQueryKeys.conversation(variables.conversationId)
+      console.log('✅ Message sent successfully:', data)
+      
+      // Invalidate messages query for this conversation
+      queryClient.invalidateQueries({ 
+        queryKey: chatQueryKeys.messages(variables.conversation_id)
       })
-      queryClient.invalidateQueries({
-        queryKey: chatQueryKeys.conversations
+      
+      // Invalidate conversations list to update last_message_at
+      queryClient.invalidateQueries({ 
+        queryKey: chatQueryKeys.conversations()
       })
     },
     onError: (error) => {
-      console.error('Failed to update conversation status:', error)
-    },
-  })
-}
-
-// Templates Query
-export function useTemplates() {
-  return useQuery({
-    queryKey: chatQueryKeys.templates,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('message_templates_cache')
-        .select('*')
-        .order('name')
-
-      if (error) {
-        throw new Error(`Failed to fetch templates: ${error.message}`)
-      }
-
-      return data as MessageTemplate[]
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-}
-
-// New: Available Agents Query for Team Leaders
-export function useAvailableAgents() {
-  const { isAuthenticated, isLoading, session } = useAuthStore()
-  
-  return useQuery({
-    queryKey: ['available-agents'],
-    queryFn: async () => {
-      // Validate session before making query
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !currentSession?.access_token) {
-        throw new Error('Authentication required. Please log in again.')
-      }
-
-      const { data, error } = await supabase
-        .from('profile')
-        .select('id, first_name, last_name, email, role, segment')
-        .in('role', ['agent', 'team_leader'])
-        .eq('is_active', true)
-        .order('first_name')
-
-      if (error) {
-        throw new Error(`Failed to fetch available agents: ${error.message}`)
-      }
-
-      return data.map(profile => ({
-        id: profile.id,
-        name: profile.first_name && profile.last_name 
-          ? `${profile.first_name} ${profile.last_name}` 
-          : null,
-        email: profile.email,
-        role: profile.role,
-        segment: profile.segment
-      }))
-    },
-    enabled: isAuthenticated && !isLoading && !!session, // Only run when user is authenticated with valid session
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    retry: (failureCount, error) => {
-      if (error.message.includes('Authentication') || error.message.includes('403')) {
-        return false
-      }
-      return failureCount < 2
-    },
-  })
-}
-
-// New: Available Business Numbers Query for Admins
-export function useAvailableBusinessNumbers() {
-  const { isAuthenticated, isLoading, session } = useAuthStore()
-  
-  return useQuery({
-    queryKey: ['available-business-numbers'],
-    queryFn: async () => {
-      // Validate session before making query
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !currentSession?.access_token) {
-        throw new Error('Authentication required. Please log in again.')
-      }
-
-      const { data, error } = await supabase
-        .from('business_whatsapp_numbers')
-        .select('id, friendly_name, display_number, segment, is_active')
-        .eq('is_active', true)
-        .order('friendly_name')
-
-      if (error) {
-        throw new Error(`Failed to fetch business numbers: ${error.message}`)
-      }
-
-      return data.map(number => ({
-        id: number.id,
-        friendly_name: number.friendly_name,
-        phone_number: number.display_number,
-        segment: number.segment
-      }))
-    },
-    enabled: isAuthenticated && !isLoading && !!session, // Only run when user is authenticated with valid session
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: (failureCount, error) => {
-      if (error.message.includes('Authentication') || error.message.includes('403')) {
-        return false
-      }
-      return failureCount < 2
-    },
-  })
-}
-
-// New: Download customer media hook
-export function useDownloadCustomerMedia() {
-  return useMutation({
-    mutationFn: async ({ mediaUrl, filename, mediaType }: { 
-      mediaUrl: string
-      filename?: string
-      mediaType?: string 
-    }) => {
-      const { data, error } = await supabase.functions.invoke('get-customer-media-url', {
-        body: {
-          media_url: mediaUrl,
-          download: true
-        }
-      })
-
-      if (error) {
-        throw new Error(error.message || 'Failed to download customer media')
-      }
-
-      // Create a temporary link to download the media
-      const blob = new Blob([data], { type: mediaType || 'application/octet-stream' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename || 'download'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      return { success: true }
-    },
-    onError: (error) => {
-      console.error('Failed to download customer media:', error)
+      console.error('❌ Failed to send message:', error)
     },
   })
 } 

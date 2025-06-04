@@ -4,330 +4,336 @@ import React from 'react'
 import { 
   Box, 
   Typography, 
-  Avatar, 
   Paper, 
-  Chip,
+  Chip, 
   IconButton,
-  Link
+  Tooltip,
+  useTheme,
+  alpha
 } from '@mui/material'
-import { 
-  Person as CustomerIcon, 
-  SupportAgent as AgentIcon, 
-  SmartToy as ChatbotIcon, 
-  Settings as SystemIcon,
-  Download as DownloadIcon,
-  Image as ImageIcon,
-  Description as DocumentIcon
+import {
+  CheckCircle,
+  Schedule,
+  Error,
+  Download,
+  Image,
+  Description,
+  SmartToy,
+  Settings,
+  Person,
+  Support
 } from '@mui/icons-material'
-import type { Message, MessageSenderType } from '@/lib/types/chat'
-import { useAuthStore } from '@/lib/zustand/auth-store'
+import { format, isToday, isYesterday } from 'date-fns'
+import type { MessageWithDetails } from '@/lib/types/chat'
 
 interface MessageItemProps {
-  message: Message
-  isCurrentUser?: boolean
-  onMediaDownload?: (message: Message) => void
+  message: MessageWithDetails
+  showTimestamp?: boolean
+  isFirstInGroup?: boolean
+  isLastInGroup?: boolean
 }
 
-function getSenderIcon(senderType: MessageSenderType) {
-  switch (senderType) {
-    case 'customer':
-      return <CustomerIcon />
-    case 'agent':
-      return <AgentIcon />
-    case 'chatbot':
-      return <ChatbotIcon />
-    case 'system':
-      return <SystemIcon />
-    default:
-      return <CustomerIcon />
-  }
-}
+export function MessageItem({ 
+  message, 
+  showTimestamp = false,
+  isFirstInGroup = false,
+  isLastInGroup = false 
+}: MessageItemProps) {
+  const theme = useTheme()
 
-function getSenderColor(senderType: MessageSenderType) {
-  switch (senderType) {
-    case 'customer':
-      return 'primary'
-    case 'agent':
-      return 'success'
-    case 'chatbot':
-      return 'secondary'
-    case 'system':
-      return 'warning'
-    default:
-      return 'default'
-  }
-}
-
-function getSenderLabel(senderType: MessageSenderType) {
-  switch (senderType) {
-    case 'customer':
-      return 'Customer'
-    case 'agent':
-      return 'Agent'
-    case 'chatbot':
-      return 'AI Assistant'
-    case 'system':
-      return 'System'
-    default:
-      return 'Unknown'
-  }
-}
-
-function formatTimestamp(timestamp: string) {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const isToday = date.toDateString() === now.toDateString()
-  
-  if (isToday) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  } else {
-    return date.toLocaleDateString([], { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-  }
-}
-
-function MediaContent({ message, onMediaDownload }: { 
-  message: Message
-  onMediaDownload?: (message: Message) => void 
-}) {
-  if (!message.media_url) return null
-
-  const mediaType = message.customer_media_mime_type || message.media_type
-  const mediaFilename = message.customer_media_filename || message.media_filename
-  const isImage = mediaType?.startsWith('image/')
-  const isDocument = !isImage
-  const isCustomerMedia = message.sender_type === 'customer'
-
-  const handleDownload = () => {
-    onMediaDownload?.(message)
+  // Determine message styling based on sender type
+  const getMessageStyling = () => {
+    switch (message.sender_type) {
+      case 'customer':
+        return {
+          backgroundColor: theme.palette.grey[100],
+          color: theme.palette.text.primary,
+          alignSelf: 'flex-start',
+          marginLeft: 0,
+          marginRight: 'auto',
+          maxWidth: '75%',
+          borderRadius: isFirstInGroup 
+            ? '18px 18px 18px 4px' 
+            : isLastInGroup 
+              ? '18px 18px 18px 18px'
+              : '18px 18px 18px 4px'
+        }
+      case 'agent':
+        return {
+          backgroundColor: message.is_own_message 
+            ? theme.palette.primary.main 
+            : theme.palette.secondary.main,
+          color: theme.palette.primary.contrastText,
+          alignSelf: 'flex-end',
+          marginLeft: 'auto',
+          marginRight: 0,
+          maxWidth: '75%',
+          borderRadius: isFirstInGroup 
+            ? '18px 18px 4px 18px' 
+            : isLastInGroup 
+              ? '18px 18px 18px 18px'
+              : '18px 18px 4px 18px'
+        }
+      case 'chatbot':
+        return {
+          backgroundColor: alpha(theme.palette.info.main, 0.1),
+          color: theme.palette.info.dark,
+          border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+          alignSelf: 'flex-start',
+          marginLeft: 0,
+          marginRight: 'auto',
+          maxWidth: '75%',
+          borderRadius: '18px'
+        }
+      case 'system':
+        return {
+          backgroundColor: alpha(theme.palette.warning.main, 0.1),
+          color: theme.palette.warning.dark,
+          border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+          alignSelf: 'center',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          maxWidth: '90%',
+          borderRadius: '18px'
+        }
+      default:
+        return {
+          backgroundColor: theme.palette.grey[100],
+          color: theme.palette.text.primary,
+          alignSelf: 'flex-start',
+          marginLeft: 0,
+          marginRight: 'auto',
+          maxWidth: '75%',
+          borderRadius: '18px'
+        }
+    }
   }
 
-  return (
-    <Box sx={{ mt: 1 }}>
-      {isImage ? (
-        <Box
-          sx={{
-            position: 'relative',
-            display: 'inline-block',
-            maxWidth: 200,
-            cursor: 'pointer',
-            '&:hover .download-overlay': {
-              opacity: 1
-            }
-          }}
-          onClick={handleDownload}
-        >
+  // Get sender icon
+  const getSenderIcon = () => {
+    switch (message.sender_type) {
+      case 'customer':
+        return <Person fontSize="small" />
+      case 'agent':
+        return <Support fontSize="small" />
+      case 'chatbot':
+        return <SmartToy fontSize="small" />
+      case 'system':
+        return <Settings fontSize="small" />
+      default:
+        return null
+    }
+  }
+
+  // Get status icon for outgoing messages
+  const getStatusIcon = () => {
+    if (message.sender_type !== 'agent' || !message.is_own_message) return null
+
+    switch (message.status) {
+      case 'sending':
+        return <Schedule sx={{ fontSize: 14, opacity: 0.7 }} />
+      case 'sent':
+        return <CheckCircle sx={{ fontSize: 14, opacity: 0.7 }} />
+      case 'delivered':
+        return <CheckCircle sx={{ fontSize: 14, color: theme.palette.success.main }} />
+      case 'read':
+        return <CheckCircle sx={{ fontSize: 14, color: theme.palette.info.main }} />
+      case 'failed':
+        return <Error sx={{ fontSize: 14, color: theme.palette.error.main }} />
+      default:
+        return null
+    }
+  }
+
+  // Format timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp)
+    if (isToday(date)) {
+      return format(date, 'HH:mm')
+    } else if (isYesterday(date)) {
+      return `Yesterday ${format(date, 'HH:mm')}`
+    } else {
+      return format(date, 'MMM dd, HH:mm')
+    }
+  }
+
+  // Render media content
+  const renderMediaContent = () => {
+    if (message.content_type === 'image') {
+      return (
+        <Box sx={{ position: 'relative', maxWidth: '100%' }}>
           <img
-            src={message.media_url}
-            alt={mediaFilename || 'Image'}
+            src={message.media_url || '#'}
+            alt="Shared image"
             style={{
               maxWidth: '100%',
-              maxHeight: 200,
-              borderRadius: 8,
-              objectFit: 'cover'
+              height: 'auto',
+              borderRadius: theme.spacing(1),
+              display: 'block'
             }}
           />
-          <Box
-            className="download-overlay"
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: 0,
-              transition: 'opacity 0.2s',
-              borderRadius: 2
-            }}
-          >
+          {message.sender_type === 'customer' && message.customer_media_whatsapp_id && (
             <IconButton
               size="small"
               sx={{
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                color: 'primary.main',
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                backgroundColor: alpha(theme.palette.common.black, 0.5),
+                color: theme.palette.common.white,
                 '&:hover': {
-                  backgroundColor: 'rgba(255,255,255,1)'
+                  backgroundColor: alpha(theme.palette.common.black, 0.7),
                 }
               }}
             >
-              <DownloadIcon fontSize="small" />
+              <Download fontSize="small" />
             </IconButton>
-          </Box>
-          {isCustomerMedia && (
-            <Chip
-              label="Customer Media"
-              size="small"
-              color="info"
-              variant="filled"
-              sx={{
-                position: 'absolute',
-                top: 4,
-                left: 4,
-                fontSize: '0.7rem'
-              }}
-            />
           )}
         </Box>
-      ) : (
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            '&:hover': {
-              backgroundColor: 'action.hover',
-              borderColor: 'primary.main'
-            }
-          }}
-          onClick={handleDownload}
-        >
-          <DocumentIcon color="action" />
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" fontWeight="medium">
-              {mediaFilename || 'Document'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {mediaType}
-              {isCustomerMedia && ' • Customer Media'}
-            </Typography>
-          </Box>
-          <IconButton size="small" color="primary">
-            <DownloadIcon fontSize="small" />
-          </IconButton>
-        </Paper>
-      )}
-    </Box>
-  )
-}
+      )
+    }
 
-export function MessageItem({ message, isCurrentUser = false, onMediaDownload }: MessageItemProps) {
-  const { user } = useAuthStore()
-  
-  // Determine if this message is from the current user
-  const isOwnMessage = message.sender_type === 'agent' && 
-    (message.sender_id === user?.id || message.sender_id_override === user?.id)
-  
-  // Message alignment - own messages on right, others on left
-  const alignment = isOwnMessage ? 'flex-end' : 'flex-start'
-  
+    if (message.content_type === 'document') {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          p: 1,
+          backgroundColor: alpha(theme.palette.common.black, 0.05),
+          borderRadius: 1
+        }}>
+          <Description color="action" />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body2" noWrap>
+              {message.customer_media_filename || 'Document'}
+            </Typography>
+            {message.customer_media_mime_type && (
+              <Typography variant="caption" color="text.secondary">
+                {message.customer_media_mime_type}
+              </Typography>
+            )}
+          </Box>
+          {message.sender_type === 'customer' && message.customer_media_whatsapp_id && (
+            <IconButton size="small">
+              <Download fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
+      )
+    }
+
+    return null
+  }
+
+  // Render template content
+  const renderTemplateContent = () => {
+    if (message.content_type !== 'template') return null
+
+    return (
+      <Box sx={{ mb: 1 }}>
+        <Chip
+          size="small"
+          label={`Template: ${message.template_name_used}`}
+          variant="outlined"
+          sx={{ mb: 1 }}
+        />
+        {message.template_variables_used && (
+          <Typography variant="caption" display="block" color="text.secondary">
+            Variables: {JSON.stringify(message.template_variables_used)}
+          </Typography>
+        )}
+      </Box>
+    )
+  }
+
+  const styling = getMessageStyling()
+
   return (
     <Box
       sx={{
         display: 'flex',
-        justifyContent: alignment,
-        mb: 2,
-        px: 2
+        flexDirection: 'column',
+        alignItems: styling.alignSelf === 'center' ? 'center' : 
+                   styling.alignSelf === 'flex-end' ? 'flex-end' : 'flex-start',
+        mb: isLastInGroup ? 2 : 0.5,
+        px: 1
       }}
     >
-      <Box
+      {/* Sender label for non-own messages */}
+      {(message.sender_type !== 'agent' || !message.is_own_message) && isFirstInGroup && (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 0.5, 
+          mb: 0.5,
+          alignSelf: styling.alignSelf
+        }}>
+          {getSenderIcon()}
+          <Typography variant="caption" color="text.secondary">
+            {message.sender_type === 'customer' ? 'Customer' :
+             message.sender_type === 'agent' ? 'Agent' :
+             message.sender_type === 'chatbot' ? 'AI Assistant' :
+             message.sender_type === 'system' ? 'System' : 
+             'Unknown'}
+          </Typography>
+        </Box>
+      )}
+
+      <Paper
+        elevation={1}
         sx={{
-          display: 'flex',
-          flexDirection: isOwnMessage ? 'row-reverse' : 'row',
-          alignItems: 'flex-start',
-          gap: 1,
-          maxWidth: '80%'
+          ...styling,
+          p: message.content_type === 'system_notification' ? 1 : 1.5,
+          position: 'relative',
+          wordBreak: 'break-word'
         }}
       >
-        {/* Avatar */}
-        <Avatar
-          sx={{
-            width: 32,
-            height: 32,
-            bgcolor: `${getSenderColor(message.sender_type)}.main`,
-            mt: 0.5
-          }}
-        >
-          {getSenderIcon(message.sender_type)}
-        </Avatar>
+        {/* Template info */}
+        {renderTemplateContent()}
 
-        {/* Message Content */}
-        <Box sx={{ flex: 1 }}>
-          {/* Sender info and timestamp */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              mb: 0.5,
-              flexDirection: isOwnMessage ? 'row-reverse' : 'row'
+        {/* Media content */}
+        {renderMediaContent()}
+
+        {/* Text content */}
+        {message.text_content && (
+          <Typography 
+            variant={message.sender_type === 'system' ? 'caption' : 'body2'}
+            sx={{ 
+              whiteSpace: 'pre-wrap',
+              fontStyle: message.sender_type === 'system' ? 'italic' : 'normal'
             }}
           >
-            <Chip
-              label={getSenderLabel(message.sender_type)}
-              size="small"
-              color={getSenderColor(message.sender_type)}
-              variant="outlined"
-            />
-            <Typography variant="caption" color="text.secondary">
-              {formatTimestamp(message.timestamp)}
-            </Typography>
-            {message.is_read && isOwnMessage && (
-              <Typography variant="caption" color="text.secondary">
-                ✓ Read
-              </Typography>
-            )}
-          </Box>
+            {message.text_content}
+          </Typography>
+        )}
 
-          {/* Message bubble */}
-          <Paper
-            elevation={1}
-            sx={{
-              p: 2,
-              backgroundColor: isOwnMessage 
-                ? 'primary.light' 
-                : message.sender_type === 'system' 
-                  ? 'warning.light'
-                  : message.sender_type === 'chatbot'
-                    ? 'secondary.light'
-                    : 'background.paper',
-              color: isOwnMessage ? 'primary.contrastText' : 'text.primary',
-              borderRadius: 2,
-              maxWidth: '100%'
-            }}
+        {/* Error message */}
+        {message.error_message && (
+          <Typography variant="caption" color="error" display="block" sx={{ mt: 0.5 }}>
+            Error: {message.error_message}
+          </Typography>
+        )}
+
+        {/* Timestamp and status */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          gap: 1,
+          mt: message.text_content || message.error_message ? 0.5 : 0
+        }}>
+          <Typography 
+            variant="caption" 
+            color="text.secondary"
+            sx={{ opacity: 0.8 }}
           >
-            {/* Text content */}
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word'
-              }}
-            >
-              {message.text_content || message.content}
-            </Typography>
-
-            {/* Media content */}
-            <MediaContent message={message} onMediaDownload={onMediaDownload} />
-
-            {/* System message styling */}
-            {message.sender_type === 'system' && (
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  display: 'block', 
-                  mt: 1, 
-                  fontStyle: 'italic',
-                  opacity: 0.8
-                }}
-              >
-                Automated message
-              </Typography>
-            )}
-          </Paper>
+            {formatTimestamp(message.timestamp)}
+          </Typography>
+          
+          {getStatusIcon()}
         </Box>
-      </Box>
+      </Paper>
     </Box>
   )
 } 

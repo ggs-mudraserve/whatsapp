@@ -1,62 +1,37 @@
 'use client'
 
-import { useState } from 'react'
-import { Box, Toolbar, Fab } from '@mui/material'
-import { Menu as MenuIcon } from '@mui/icons-material'
+import { Box, Toolbar } from '@mui/material'
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
+import { useLayoutStore } from '@/lib/zustand/layout-store'
 
-const DRAWER_WIDTH = 240
-const MINI_DRAWER_WIDTH = 0
+const DRAWER_WIDTH = 280
+const COLLAPSED_WIDTH = 72
 
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [desktopOpen, setDesktopOpen] = useState(true)
+  const { sidebarCollapsed, mobileOpen, toggleSidebar, toggleMobile } = useLayoutStore()
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen)
-  }
-
-  const handleDesktopDrawerToggle = () => {
-    setDesktopOpen(!desktopOpen)
-  }
+  const sidebarWidth = sidebarCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH
 
   return (
     <Box sx={{ display: 'flex' }}>
       <AppHeader 
-        onMenuClick={handleDrawerToggle}
-        onDesktopMenuClick={handleDesktopDrawerToggle}
-        desktopOpen={desktopOpen}
+        onMenuClick={toggleMobile}
+        onSidebarToggle={toggleSidebar}
+        sidebarCollapsed={sidebarCollapsed}
       />
       
       <AppSidebar
-        mobileOpen={mobileOpen}
-        desktopOpen={desktopOpen}
-        onMobileClose={handleDrawerToggle}
-        drawerWidth={DRAWER_WIDTH}
-        miniDrawerWidth={MINI_DRAWER_WIDTH}
+        open={mobileOpen}
+        onClose={toggleMobile}
+        width={DRAWER_WIDTH}
+        collapsed={sidebarCollapsed}
+        collapsedWidth={COLLAPSED_WIDTH}
       />
-
-      {!desktopOpen && (
-        <Fab
-          color="primary"
-          size="small"
-          onClick={handleDesktopDrawerToggle}
-          sx={{
-            position: 'fixed',
-            top: 80,
-            left: 16,
-            zIndex: (theme) => theme.zIndex.drawer - 1,
-            display: { xs: 'none', sm: 'flex' },
-          }}
-        >
-          <MenuIcon />
-        </Fab>
-      )}
 
       <Box
         component="main"
@@ -64,15 +39,22 @@ export function AppLayout({ children }: AppLayoutProps) {
           flexGrow: 1,
           width: { 
             xs: '100%',
-            sm: desktopOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%' 
+            sm: `calc(100% - ${sidebarWidth}px)` 
+          },
+          ml: { 
+            xs: 0,
+            sm: `${sidebarWidth}px` 
           },
           minHeight: '100vh',
           backgroundColor: 'grey.50',
-          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+          transition: (theme) => theme.transitions.create(['width', 'margin-left'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <Toolbar />
-        <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <Box sx={{ p: 3 }}>
           {children}
         </Box>
       </Box>

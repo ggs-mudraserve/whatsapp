@@ -1,12 +1,7 @@
 import { Typography, Paper, Box, Grid } from '@mui/material'
 import { ProtectedRoute } from '@/components/auth/protected-route'
-import { ChatInterface } from '@/components/chat'
 
 export default function DashboardPage() {
-  // In a real application, these would come from the user's profile/auth context
-  const userRole = 'agent' // This would be dynamic: 'admin' | 'team_leader' | 'agent'
-  const userSegment = 'general' // This would come from the user's profile
-
   return (
     <ProtectedRoute>
       <Box>
@@ -16,9 +11,15 @@ export default function DashboardPage() {
         <Typography variant="body1" color="text.secondary" gutterBottom>
           Welcome to the WhatsApp Cloud API Front-End Dashboard
         </Typography>
+        
+        <Paper sx={{ p: 2, mb: 3, backgroundColor: 'info.light', color: 'info.contrastText' }}>
+          <Typography variant="body2">
+            <strong>✨ New:</strong> The sidebar is now collapsible! Click the chevron button (← →) in the header to toggle between expanded and collapsed view. This gives you more space for your content.
+          </Typography>
+        </Paper>
 
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12} sm={6} lg={4}>
+          <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" gutterBottom>
                 Active Conversations
@@ -32,7 +33,7 @@ export default function DashboardPage() {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} sm={6} lg={4}>
+          <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" gutterBottom>
                 Unassigned Chats
@@ -46,7 +47,7 @@ export default function DashboardPage() {
             </Paper>
           </Grid>
 
-          <Grid item xs={12} sm={6} lg={4}>
+          <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" gutterBottom>
                 Active Agents
@@ -61,25 +62,13 @@ export default function DashboardPage() {
           </Grid>
 
           <Grid item xs={12}>
-            <Paper sx={{ 
-              p: { xs: 2, sm: 3 }, 
-              height: { xs: 500, sm: 600, md: 700 }, // Responsive height
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
+            <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Chat Interface - Real-time Messaging with Filters
+                Recent Activity
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Complete chat interface with real-time updates, conversation filtering by status, 
-                and role-based access controls
+              <Typography variant="body2" color="text.secondary">
+                Dashboard features will be implemented in upcoming tasks.
               </Typography>
-              <Box sx={{ flex: 1, minHeight: 0 }}>
-                <ChatInterface 
-                  userRole={userRole}
-                  userSegment={userSegment}
-                />
-              </Box>
             </Paper>
           </Grid>
         </Grid>

@@ -152,18 +152,6 @@ class RealtimeManager {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages'
-        },
-        (payload) => {
-          console.log('🔄 RealtimeManager: Message update received:', payload)
-          this.handleDirectMessageUpdate(payload)
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
           event: '*',
           schema: 'public',
           table: 'conversations'
@@ -184,7 +172,7 @@ class RealtimeManager {
           console.log('✅ RealtimeManager: Successfully connected')
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           this.isConnected = false
-          console.warn('⚠️ RealtimeManager: Connection lost or failed')
+          console.warn('⚠️ RealtimeManager: Connection lost or failed, status:', status)
         }
         
         // Only emit event if connection status actually changed
@@ -200,14 +188,16 @@ class RealtimeManager {
         }
       })
 
-    // Test connection after 2 seconds
+    // Test connection after 3 seconds
     setTimeout(() => {
       if (this.channel?.state === 'joined') {
         console.log('✅ RealtimeManager: Connection test passed')
       } else {
         console.warn('⚠️ RealtimeManager: Connection test failed, state:', this.channel?.state)
+        console.warn('⚠️ RealtimeManager: Check if Realtime is enabled in Supabase project settings')
+        console.warn('⚠️ RealtimeManager: Check if tables have realtime enabled: message_notifications, conversations')
       }
-    }, 2000)
+    }, 3000)
   }
 
   // Handle message notifications from partitioned tables
@@ -264,16 +254,6 @@ class RealtimeManager {
     }
 
     console.warn(`⚠️ RealtimeManager: Message ${messageId} not found in any partition`)
-  }
-
-  // Handle direct message updates
-  private handleDirectMessageUpdate(payload: any): void {
-    const { eventType, new: newRecord } = payload
-    
-    if (eventType === 'UPDATE' && newRecord) {
-      console.log('✅ RealtimeManager: Message update, emitting event')
-      this.emitEvent({ type: 'message_received', payload: newRecord })
-    }
   }
 
   // Handle conversation updates
