@@ -56,8 +56,8 @@ Subtasks:
 * [x] 2.6.1 Create chat list components.  
 * [x] 2.6.2 Fetch and display user's conversations (RLS-based).  
 * [x] 2.6.3 List item: Contact, Last Message Timestamp, Unread Count.  
-* [ ] 2.6.4 Highlight active chat. Implement search.  
-* [ ] 2.6.5 (Agent View) Basic filters: Status (open/closed).  
+* [x] 2.6.4 Highlight active chat. Implement search.  
+* [x] 2.6.5 (Agent View) Basic filters: Status (open/closed).  
 * [x] 2.6.6 Real-time updates for chat list.  
 Achievement: Users can send and receive various message types, view chat history, and see real-time updates. Media handling (upload/download) is functional.  
 Working: Core chat functionality for agents/users.  
@@ -66,12 +66,12 @@ Subtasks:
 * [x] 3.1 Implement/Verify update-conversation-status Edge Function (calls set_conversation_status RPC, handles optimistic locking with If-Match header). (PRD Sec 4, Sec 6.4)  
 * [x] 3.2 Implement/Verify assign-conversation Edge Function (Admin/TL, calls assign_conversation_and_update_related RPC, handles optimistic locking with If-Match header). (PRD Sec 4, Sec 6.2, Sec 6.6)  
 * [x] 3.3 Implement/Verify toggle-chatbot Edge Function (Agent/TL, updates conversations.is_chatbot_active, handles optimistic locking with If-Match header). (PRD Sec 4, Sec 6.3, Sec 6.5)  
-* [ ] 3.4 Frontend - Chat Interface Enhancements:  
-* [ ] 3.4.1 "Stop Chatbot" / "Activate Chatbot" button (calls toggle-chatbot EF). (PRD Sec 6.3, Sec 6.5)  
-* [ ] 3.4.2 "Close Conversation" / "Reopen Conversation" button (calls update-conversation-status EF). (PRD Sec 6.3, Sec 6.4)  
-* [ ] 3.4.3 Display incoming customer media (integrates with get-customer-media-url EF). (PRD Sec 6.3)  
-* [ ] 3.4.4 Agent media upload (integrates upload-chat-media then send-message EFs). (PRD Sec 6.3)  
-* [ ] 3.4.5 "Send Template" functionality (modal, integrates with send-message EF). (PRD Sec 6.3)  
+* [x] 3.4 Frontend - Chat Interface Enhancements:  
+* [x] 3.4.1 "Stop Chatbot" / "Activate Chatbot" button (calls toggle-chatbot EF). (PRD Sec 6.3, Sec 6.5)  
+* [x] 3.4.2 "Close Conversation" / "Reopen Conversation" button (calls update-conversation-status EF). (PRD Sec 6.3, Sec 6.4)  
+* [x] 3.4.3 Display incoming customer media (integrates with get-customer-media-url EF). (PRD Sec 6.3)  
+* [x] 3.4.4 Agent media upload (integrates upload-chat-media then send-message EFs). (PRD Sec 6.3)  
+* [x] 3.4.5 "Send Template" functionality (modal, integrates with send-message EF). (PRD Sec 6.3)  
 Achievement: Backend and frontend capabilities for managing conversation status, assignments, chatbot interaction are implemented.  
 Working: Users can fully manage conversations.  
 [x] 4. Admin Backend Functionality (Edge Functions)  
@@ -138,7 +138,7 @@ Working: Chatbot messages (if logged by chatbot) and system messages are visuall
 [ ] 9. Project Finalization  
 Subtasks:  
 * [ ] 9.1 Database Cleanup:  
-* [ ] 9.1.1 Deprecate or DROP the old public.insert_agent_message RPC from the database (if it exists and is no longer used).  
+* [x] 9.1.1 Deprecate or DROP the old public.insert_agent_message RPC from the database (if it exists and is no longer used).  
 * [ ] 9.2 Update All Documentation to v1.17 Final:  
 * [ ] 9.2.1 Ensure "Supabase Database Specification - v1.17" is complete and accurately reflects all RPCs, tables, ENUMs, and indexes.  
 * [ ] 9.2.2 Ensure "Product Requirements Document - v1.17" accurately describes all functionalities and workflows.  

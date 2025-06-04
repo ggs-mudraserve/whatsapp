@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Box, Paper, Typography, CircularProgress } from '@mui/material'
+import { Box, Typography, CircularProgress } from '@mui/material'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { ConversationView } from '@/components/chat/conversation-view'
+import { ConversationList } from '@/components/chat/conversation-list'
 import { useConversations } from '@/lib/hooks/use-chat-queries'
 import { useRealtime } from '@/components/providers/realtime-provider'
 import { useQueryClient } from '@tanstack/react-query'
@@ -87,85 +88,15 @@ export default function ConversationsPage() {
         display: 'flex',
         overflow: 'hidden'
       }}>
-        {/* Conversations List (Left Pane) */}
-        <Paper sx={{ 
-          width: 350,
-          borderRadius: 0,
-          borderRight: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
-        }}>
-          {/* Header */}
-          <Box sx={{ 
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-            backgroundColor: 'primary.main',
-            color: 'primary.contrastText'
-          }}>
-            <Typography variant="h6">
-              Conversations ({conversations?.length || 0})
-            </Typography>
-            {/* Real-time connection indicator */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              <Box 
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: isConnected ? 'success.main' : 'error.main'
-                }}
-              />
-              <Typography variant="caption">
-                Real-time: {isConnected ? 'Connected' : isInitializing ? 'Connecting...' : 'Disconnected'}
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Conversations List */}
-          <Box sx={{ flex: 1, overflow: 'auto' }}>
-            {conversations?.length === 0 ? (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography color="text.secondary">
-                  No conversations found
-                </Typography>
-              </Box>
-            ) : (
-              conversations?.map((conversation) => (
-                <Box
-                  key={conversation.id}
-                  sx={{
-                    p: 2,
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    cursor: 'pointer',
-                    backgroundColor: selectedConversationId === conversation.id 
-                      ? 'action.selected' 
-                      : 'transparent',
-                    '&:hover': {
-                      backgroundColor: 'action.hover'
-                    }
-                  }}
-                  onClick={() => setSelectedConversationId(conversation.id)}
-                >
-                  <Typography variant="subtitle2" fontWeight="bold">
-                    {conversation.lead?.first_name || conversation.lead?.last_name 
-                      ? `${conversation.lead.first_name || ''} ${conversation.lead.last_name || ''}`.trim()
-                      : 'Unknown Contact'}
-                  </Typography>
-                  <Typography variant="body2" color="text.primary" display="block">
-                    {conversation.contact_e164_phone}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Status: {conversation.status} • Business: {conversation.business_whatsapp_number?.display_number}
-                  </Typography>
-                </Box>
-              ))
-            )}
-          </Box>
-        </Paper>
+        {/* Conversations List (Left Pane) - Now using the ConversationList component */}
+        <ConversationList
+          conversations={conversations || []}
+          selectedConversationId={selectedConversationId}
+          onConversationSelect={setSelectedConversationId}
+          isLoading={isLoading}
+          isConnected={isConnected}
+          isInitializing={isInitializing}
+        />
 
         {/* Chat View (Right Pane) */}
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
