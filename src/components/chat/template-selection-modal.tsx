@@ -25,6 +25,7 @@ import {
 } from '@mui/material'
 import { Close, Send, Preview } from '@mui/icons-material'
 import { useTemplates } from '@/lib/hooks/use-templates'
+import { formatTemplateVariablesForWhatsApp } from '@/lib/hooks/use-templates'
 import type { ProcessedTemplate } from '@/lib/hooks/use-templates'
 
 // Props interface for the modal
@@ -39,7 +40,11 @@ interface TemplateSelectionProps {
 export interface TemplateSendData {
   template_name: string
   template_language: string
-  template_variables?: Record<string, string>
+  template_variables?: {
+    body?: string[]
+    header?: string[]
+    footer?: string[]
+  }
   header_image_url?: string
 }
 
@@ -74,6 +79,10 @@ export function TemplateSelectionModal({
 
   const handleTemplateSelect = useCallback((template: ProcessedTemplate) => {
     console.log('🔍 [DEBUG] Template selected:', template)
+    console.log('🔍 [DEBUG] Template variables:', template.variables)
+    console.log('🔍 [DEBUG] Template body_text:', template.body_text)
+    console.log('🔍 [DEBUG] Template components:', template.components)
+    
     setSelectedTemplate(template)
     // Initialize variables with empty values based on extracted variables
     const initialVariables: Record<string, string> = {}
@@ -125,33 +134,59 @@ export function TemplateSelectionModal({
     setIsSubmitting(true)
     
     try {
+      console.log('🔍 [DEBUG] Template send - selectedTemplate:', selectedTemplate)
+      console.log('🔍 [DEBUG] Template send - templateVariables:', templateVariables)
+      
       const templateData: TemplateSendData = {
         template_name: selectedTemplate.name,
         template_language: selectedTemplate.language,
-        template_variables: templateVariables,
-        // Note: header_image_url would need to be configured separately
       }
 
-      // Only include template_variables if the template actually has variables
-      if (selectedTemplate.variables.length === 0) {
-        delete (templateData as any).template_variables
+      // Process template variables for WhatsApp API if template has variables
+      if (selectedTemplate.variables.length > 0) {
+        // Check if first variable is the special MEDIA_URL
+        const hasMediaUrl = selectedTemplate.variables[0] === 'MEDIA_URL'
+        
+        let textVariables = selectedTemplate.variables
+        
+        if (hasMediaUrl) {
+          // Set header_image_url from the MEDIA_URL variable
+          templateData.header_image_url = templateVariables['MEDIA_URL']
+          // Remove the MEDIA_URL from text variables since it's used for header
+          textVariables = selectedTemplate.variables.slice(1)
+          
+          console.log('🔍 [DEBUG] Set header_image_url:', templateData.header_image_url)
+          console.log('🔍 [DEBUG] Remaining text variables:', textVariables)
+        }
+        
+        // Format text variables for WhatsApp API body if any exist
+        if (textVariables.length > 0) {
+          const orderedValues = formatTemplateVariablesForWhatsApp(
+            textVariables, 
+            templateVariables
+          )
+          
+          console.log('🔍 [DEBUG] Ordered body values for WhatsApp API:', orderedValues)
+          
+          templateData.template_variables = {
+            body: orderedValues
+          }
+        }
+        
+        console.log('🔍 [DEBUG] Final template data being sent:', templateData)
       }
 
       await onSend(templateData)
-      
-      // Reset form and close modal
+      setStep('select')
       setSelectedTemplate(null)
       setTemplateVariables({})
-      setStep('select')
       setErrors({})
-      onClose()
     } catch (error) {
-      console.error('Failed to send template:', error)
-      // Error handling is done by the parent component
+      console.error('Error sending template:', error)
     } finally {
       setIsSubmitting(false)
     }
-  }, [selectedTemplate, templateVariables, validateForm, onSend, onClose])
+  }, [selectedTemplate, templateVariables, validateForm, onSend])
 
   const handleBack = useCallback(() => {
     setStep('select')
@@ -171,13 +206,23 @@ export function TemplateSelectionModal({
   const renderPreview = useCallback(() => {
     if (!selectedTemplate) return null
 
-    let previewText = selectedTemplate.body_text
+    // Check if this template has a media header
+    const hasMediaUrl = selectedTemplate.variables[0] === 'MEDIA_URL'
+    const mediaUrl = hasMediaUrl ? templateVariables['MEDIA_URL'] : null
+
+    // Get the preview text from body, or fallback to a message if body is empty
+    let previewText = selectedTemplate.body_text || 'No template content available'
     
-    // Replace variables with actual values or placeholders
-    selectedTemplate.variables.forEach(variable => {
-      const value = templateVariables[variable] || `${variable}`
-      previewText = previewText.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value)
-    })
+    // If we have variables, try to replace them with actual values or placeholders
+    if (selectedTemplate.variables.length > 0) {
+      selectedTemplate.variables.forEach(variable => {
+        // Skip MEDIA_URL as it's handled separately
+        if (variable === 'MEDIA_URL') return
+        
+        const value = templateVariables[variable] || `[${variable}]`
+        previewText = previewText.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value)
+      })
+    }
 
     return (
       <Card variant="outlined" sx={{ mt: 2 }}>
@@ -185,17 +230,50 @@ export function TemplateSelectionModal({
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Preview
           </Typography>
+          
+          {/* Show header image if provided */}
+          {hasMediaUrl && mediaUrl && (
+            <Box sx={{ mb: 2 }}>
+              <img
+                src={mediaUrl}
+                alt="Template header image"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '200px',
+                  borderRadius: '8px',
+                  objectFit: 'cover'
+                }}
+                onError={(e) => {
+                  // Handle broken image
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </Box>
+          )}
+          
+          {/* Show header text if available */}
           {selectedTemplate.header_text && (
             <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
               {selectedTemplate.header_text}
             </Typography>
           )}
+          
+          {/* Show body text */}
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 1 }}>
             {previewText}
           </Typography>
+          
+          {/* Show footer text if available */}
           {selectedTemplate.footer_text && (
             <Typography variant="caption" color="text.secondary">
               {selectedTemplate.footer_text}
+            </Typography>
+          )}
+          
+          {/* Show debug info about why preview might be empty */}
+          {process.env.NODE_ENV === 'development' && !selectedTemplate.body_text && (
+            <Typography variant="caption" color="warning.main" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+              Note: Template body text is empty - this might indicate a parsing issue
             </Typography>
           )}
         </CardContent>
@@ -334,20 +412,65 @@ export function TemplateSelectionModal({
               Fill in the template variables below:
             </Typography>
 
+            {/* Debug info */}
+            {process.env.NODE_ENV === 'development' && (
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+                <Typography variant="caption" display="block">
+                  DEBUG - Template: {selectedTemplate.name}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Variables found: {selectedTemplate.variables.length} - {JSON.stringify(selectedTemplate.variables)}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Body text: {selectedTemplate.body_text}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Header text: {selectedTemplate.header_text}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Footer text: {selectedTemplate.footer_text}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Components: {JSON.stringify(selectedTemplate.components, null, 2)}
+                </Typography>
+              </Box>
+            )}
+
             <Stack spacing={3}>
-              {selectedTemplate.variables.map((variable) => (
-                <TextField
-                  key={variable}
-                  label={`Variable ${variable}`}
-                  value={templateVariables[variable] || ''}
-                  onChange={(e) => handleVariableChange(variable, e.target.value)}
-                  error={!!errors[variable]}
-                  helperText={errors[variable]}
-                  fullWidth
-                  required
-                  placeholder={`Enter value for ${variable}`}
-                />
-              ))}
+              {selectedTemplate.variables.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  This template doesn't have any variables. You can send it directly.
+                </Typography>
+              ) : (
+                selectedTemplate.variables.map((variable, index) => {
+                  // Check if this is the special MEDIA_URL variable
+                  const isMediaVariable = variable === 'MEDIA_URL'
+                  const headerComponent = selectedTemplate.components.find(c => c.type === 'HEADER')
+                  
+                  const fieldLabel = isMediaVariable && headerComponent?.format
+                    ? `${headerComponent.format.toLowerCase().charAt(0).toUpperCase() + headerComponent.format.toLowerCase().slice(1)} URL`
+                    : `Variable ${variable}`
+                  
+                  const placeholder = isMediaVariable && headerComponent?.format
+                    ? `Enter ${headerComponent.format.toLowerCase()} URL`
+                    : `Enter value for ${variable}`
+
+                  return (
+                    <TextField
+                      key={variable}
+                      label={fieldLabel}
+                      value={templateVariables[variable] || ''}
+                      onChange={(e) => handleVariableChange(variable, e.target.value)}
+                      error={!!errors[variable]}
+                      helperText={errors[variable] || (isMediaVariable ? 'This will be used as the header media' : '')}
+                      fullWidth
+                      required
+                      placeholder={placeholder}
+                      type={isMediaVariable ? 'url' : 'text'}
+                    />
+                  )
+                })
+              )}
             </Stack>
 
             {renderPreview()}

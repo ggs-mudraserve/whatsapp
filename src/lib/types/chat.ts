@@ -117,7 +117,11 @@ export interface SendMessagePayload {
   // Template message fields
   template_name?: string
   template_language?: string
-  template_variables?: Record<string, any>
+  template_variables?: {
+    body?: string[]
+    header?: string[]
+    footer?: string[]
+  }
   header_image_url?: string
   // Media message fields
   media_url?: string

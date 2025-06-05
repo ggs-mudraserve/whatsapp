@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material'
 import { format, isToday, isYesterday } from 'date-fns'
 import type { MessageWithDetails } from '@/lib/types/chat'
+import { useTemplates, renderTemplateText } from '@/lib/hooks/use-templates'
 
 interface MessageItemProps {
   message: MessageWithDetails
@@ -61,9 +62,11 @@ export function MessageItem({
       case 'agent':
         return {
           backgroundColor: message.is_own_message 
-            ? theme.palette.primary.main 
+            ? alpha(theme.palette.primary.main, 0.15)
             : theme.palette.secondary.main,
-          color: theme.palette.primary.contrastText,
+          color: message.is_own_message 
+            ? theme.palette.text.primary
+            : theme.palette.primary.contrastText,
           alignSelf: 'flex-end',
           marginLeft: 'auto',
           marginRight: 0,
@@ -145,6 +148,25 @@ export function MessageItem({
     }
   }
 
+  // Handle download of customer media
+  const handleDownload = async () => {
+    if (!message.customer_media_whatsapp_id) return
+    
+    try {
+      const url = `/api/get-customer-media-url?customer_media_id=${encodeURIComponent(message.customer_media_whatsapp_id)}&conversation_id=${encodeURIComponent(message.conversation_id)}&download=true`
+      
+      // Create a temporary link to trigger download
+      const link = document.createElement('a')
+      link.href = url
+      link.download = message.customer_media_filename || `media-${message.customer_media_whatsapp_id}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Failed to download media:', error)
+    }
+  }
+
   // Format timestamp
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -175,6 +197,7 @@ export function MessageItem({
           {message.sender_type === 'customer' && message.customer_media_whatsapp_id && (
             <IconButton
               size="small"
+              onClick={handleDownload}
               sx={{
                 position: 'absolute',
                 top: 4,
@@ -215,7 +238,7 @@ export function MessageItem({
             )}
           </Box>
           {message.sender_type === 'customer' && message.customer_media_whatsapp_id && (
-            <IconButton size="small">
+            <IconButton size="small" onClick={handleDownload}>
               <Download fontSize="small" />
             </IconButton>
           )}
@@ -230,8 +253,104 @@ export function MessageItem({
   const renderTemplateContent = () => {
     if (message.content_type !== 'template') return null
 
+    // Get template data to render the preview
+    const { data: templates } = useTemplates()
+    const template = templates?.find(t => 
+      t.name === message.template_name_used && 
+      t.language === 'en' // Assuming English for now, could be dynamic
+    )
+
+    // If we have template data and variables, render the actual content
+    if (template && message.template_variables_used) {
+      let renderedText = template.body_text || ''
+      
+      // Handle different variable formats
+      const variables = message.template_variables_used
+      
+      if (variables.body && Array.isArray(variables.body)) {
+        // Handle format: { body: ["value1", "value2"] }
+        variables.body.forEach((value: string, index: number) => {
+          const placeholder = `{{${index + 1}}}`
+          renderedText = renderedText.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value)
+        })
+      } else {
+        // Handle format: { "{{1}}": "value1", "{{2}}": "value2" }
+        Object.entries(variables).forEach(([key, value]) => {
+          if (key.startsWith('{{') && key.endsWith('}}')) {
+            const placeholder = key.replace(/[{}]/g, '\\$&')
+            renderedText = renderedText.replace(new RegExp(placeholder, 'g'), String(value))
+          }
+        })
+      }
+
+      return (
+        <Box>
+          {/* Show header image if available */}
+          {message.media_url && (
+            <Box sx={{ mb: 2 }}>
+              <img
+                src={message.media_url}
+                alt="Template header image"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '200px',
+                  borderRadius: theme.spacing(1),
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+                onError={(e) => {
+                  // Handle broken image
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </Box>
+          )}
+          
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              whiteSpace: 'pre-wrap',
+              fontStyle: 'italic',
+              color: 'text.secondary',
+              mb: 1
+            }}
+          >
+            {renderedText}
+          </Typography>
+          <Chip
+            size="small"
+            label={`Template: ${message.template_name_used}`}
+            variant="outlined"
+            sx={{ opacity: 0.7 }}
+          />
+        </Box>
+      )
+    }
+
+    // Fallback to original display if template data not available
     return (
       <Box sx={{ mb: 1 }}>
+        {/* Show header image if available (even in fallback) */}
+        {message.media_url && (
+          <Box sx={{ mb: 2 }}>
+            <img
+              src={message.media_url}
+              alt="Template header image"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '200px',
+                borderRadius: theme.spacing(1),
+                objectFit: 'cover',
+                display: 'block'
+              }}
+              onError={(e) => {
+                // Handle broken image
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </Box>
+        )}
+        
         <Chip
           size="small"
           label={`Template: ${message.template_name_used}`}

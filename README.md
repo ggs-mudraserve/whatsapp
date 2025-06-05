@@ -247,6 +247,137 @@ whatsapp-cloud-api-frontend/
 - Image optimization with next/image
 - Proper use of React suspense boundaries
 
+## 📱 WhatsApp Business API Setup
+
+### Complete Process for Adding New WhatsApp Numbers
+
+Adding a new WhatsApp number to your system requires setup on **both** the WhatsApp platform and your application. Here's the complete process:
+
+#### Step 1: WhatsApp Platform Setup (Required First)
+
+Before you can add a number to your app, it must be configured on Meta's WhatsApp Business platform:
+
+1. **WhatsApp Business Account Setup**
+   - Create or access your WhatsApp Business Account (WABA)
+   - Note down your `waba_id` (WhatsApp Business Account ID)
+   - Example: `596335420128542`
+
+2. **Phone Number Registration**
+   - Add a phone number to your WABA through Meta Business Manager
+   - Complete phone number verification with WhatsApp
+   - Note down the generated `waba_phone_number_id`
+   - Example: `680311618491825`
+
+3. **Access Token Generation**
+   - Create an access token with proper permissions for your WABA
+   - This token allows API access for sending messages
+   - Note down the `access_token` (starts with "EAAInKx...")
+   - Example: `EAAInKxUjXsoBO7KqNAKJBOEW3fysfk4atw4vYBm8TaTCgNHt...`
+
+4. **Webhook Configuration** (Optional but Recommended)
+   - Set up webhook URLs in Meta Business Manager
+   - Configure webhook verification for receiving messages
+   - Point to your application's webhook endpoint
+
+#### Step 2: Add to Your Application
+
+Once your WhatsApp Business API number is configured on Meta's platform, use your app's **WhatsApp Number Management** interface:
+
+1. **Access Admin Panel**
+   - Log in as an admin user
+   - Navigate to Admin → WhatsApp Numbers
+   - Click "Add Number"
+
+2. **Fill Required Information**
+   ```typescript
+   // Information from WhatsApp setup:
+   {
+     waba_phone_number_id: "680311618491825",    // From Meta Business Manager
+     display_number: "+15551781396",             // The actual phone number
+     segment: "PL" | "BL",                       // Your business segment
+     chatbot_identifier: "personal_loan_bot",    // Your internal identifier
+     access_token: "EAAInKx...",                 // From Meta Business Manager
+     waba_id: "596335420128542",                 // From Meta Business Manager
+     
+     // Optional fields:
+     friendly_name: "Personal Loan Support",     // Internal display name
+     chatbot_endpoint_url: "https://..."         // Your chatbot webhook URL
+   }
+   ```
+
+3. **Validate and Save**
+   - The form validates all required fields
+   - Phone numbers must be in proper format
+   - Chatbot identifiers must be lowercase with underscores
+   - Access tokens are stored securely (password field)
+
+#### Step 3: Verification and Testing
+
+1. **Number Status Check**
+   - Verify the number appears as "Active" in your admin panel
+   - Check that rate limiting is set to default (10 msg/s)
+   - Ensure chatbot configuration is correct if using AI
+
+2. **Test Message Sending**
+   - Use your chat interface to send a test message
+   - Verify messages are delivered through WhatsApp
+   - Check that conversations are created properly
+
+### Typical Workflow Example
+
+```bash
+# Business Scenario: "We need a new WhatsApp number for Business Loans"
+
+1. Business Decision
+   └── "Add new number for BL segment"
+
+2. Meta Platform Setup
+   ├── Go to Meta Business Manager
+   ├── Add phone number to WABA
+   ├── Complete verification process
+   ├── Generate access token
+   └── Copy credentials (waba_phone_number_id, access_token, waba_id)
+
+3. Application Configuration
+   ├── Login as admin
+   ├── Admin → WhatsApp Numbers → Add Number
+   ├── Fill form with Meta credentials
+   ├── Set segment = "BL"
+   ├── Configure chatbot settings
+   └── Save configuration
+
+4. Testing & Activation
+   ├── Verify number shows as "Active"
+   ├── Send test message
+   ├── Confirm delivery
+   └── Number ready for production use
+```
+
+### Important Notes
+
+- **Order Matters**: WhatsApp Business API numbers must be created on Meta's platform BEFORE adding them to your app
+- **Credentials Are Sensitive**: Access tokens provide full message sending capability - treat them like API keys
+- **RLS Protection**: Database operations are protected by Row Level Security policies restricting access to admin users only
+- **Real-time Updates**: Number configurations sync across all admin users in real-time
+- **Rate Limiting**: Default rate limits are applied (10 messages/second) with adaptive scaling
+
+### Security Considerations
+
+1. **Access Token Storage**
+   - Tokens are displayed as password fields in the UI
+   - Stored securely in the database with proper encryption
+   - Only accessible by admin users
+
+2. **Admin-Only Access**
+   - WhatsApp number management requires admin role
+   - Protected by authentication middleware
+   - Database operations secured by RLS policies
+
+3. **Validation & Sanitization**
+   - All inputs are validated on both client and server side
+   - Phone numbers must match proper E.164 format
+   - URLs are validated for proper protocol (https://)
+
 ## 🤝 Contributing
 
 1. Follow the established code style and conventions

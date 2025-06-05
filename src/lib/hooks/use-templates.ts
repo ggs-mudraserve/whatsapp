@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 
 // Database types - simplified inline definition
@@ -48,6 +48,25 @@ export interface ProcessedTemplate {
   components: TemplateComponent[]
 }
 
+export interface MessageTemplate {
+  id: string
+  name: string
+  language: string
+  category: string
+  components_json: {
+    components: TemplateComponent[]
+  }
+  status_from_whatsapp: string
+  last_synced_at?: string
+  waba_id?: string
+}
+
+export interface SyncTemplatesInput {
+  waba_id: string
+}
+
+const TEMPLATES_QUERY_KEY = 'message-templates'
+
 /**
  * Extract WhatsApp variables from template text
  * Looks for patterns like {{1}}, {{2}}, etc.
@@ -61,15 +80,39 @@ function extractWhatsAppVariables(text: string): string[] {
  * Helper function to process database templates into frontend format
  */
 function processTemplate(dbTemplate: DatabaseTemplate): ProcessedTemplate {
-  console.log('🔍 [DEBUG] Processing template:', dbTemplate.name, 'components_json:', dbTemplate.components_json)
+  console.log('🔍 [DEBUG] Processing template:', dbTemplate.name)
+  console.log('🔍 [DEBUG] Raw dbTemplate:', JSON.stringify(dbTemplate, null, 2))
+  console.log('🔍 [DEBUG] components_json type:', typeof dbTemplate.components_json)
+  console.log('🔍 [DEBUG] components_json value:', dbTemplate.components_json)
   
   // Parse components_json - it has a nested structure: { "components": [...] }
   let components: TemplateComponent[] = []
   try {
-    if (dbTemplate.components_json && dbTemplate.components_json.components) {
-      components = dbTemplate.components_json.components
+    if (dbTemplate.components_json) {
+      // Handle different possible structures
+      if (Array.isArray(dbTemplate.components_json)) {
+        // Direct array format: [...]
+        components = dbTemplate.components_json
+        console.log('🔍 [DEBUG] Using direct array format')
+      } else if (dbTemplate.components_json.components && Array.isArray(dbTemplate.components_json.components)) {
+        // Nested format: { components: [...] }
+        components = dbTemplate.components_json.components
+        console.log('🔍 [DEBUG] Using nested components format')
+      } else if (typeof dbTemplate.components_json === 'string') {
+        // JSON string format - need to parse
+        const parsed = JSON.parse(dbTemplate.components_json)
+        if (Array.isArray(parsed)) {
+          components = parsed
+          console.log('🔍 [DEBUG] Parsed JSON string to direct array')
+        } else if (parsed.components && Array.isArray(parsed.components)) {
+          components = parsed.components
+          console.log('🔍 [DEBUG] Parsed JSON string to nested components')
+        }
+      } else {
+        console.warn('⚠️ [DEBUG] Unknown components_json structure for template:', dbTemplate.name)
+      }
     } else {
-      console.warn('⚠️ [DEBUG] No components found in template:', dbTemplate.name)
+      console.warn('⚠️ [DEBUG] No components_json found in template:', dbTemplate.name)
     }
   } catch (error) {
     console.error('❌ [DEBUG] Error parsing components_json for template:', dbTemplate.name, error)
@@ -92,10 +135,36 @@ function processTemplate(dbTemplate: DatabaseTemplate): ProcessedTemplate {
     footerText
   })
 
-  // Extract variables from body text (WhatsApp format: {{1}}, {{2}}, etc.)
-  const variables = extractWhatsAppVariables(bodyText)
+  // Extract variables from all text components (header, body, footer)
+  let variables = extractWhatsAppVariables([headerText, bodyText, footerText].join(' '))
   
-  console.log('🔍 [DEBUG] Extracted variables for template:', dbTemplate.name, variables)
+  // Check if header has IMAGE, VIDEO, or DOCUMENT format - these require media URL variables
+  if (headerComponent?.format && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComponent.format)) {
+    // For templates with media headers, we need a special variable for the media URL
+    // This is handled separately from text variables, so we add a special identifier
+    variables.unshift('MEDIA_URL')
+    console.log('🔍 [DEBUG] Added MEDIA_URL variable for', headerComponent.format, 'header')
+  }
+  
+  // Sort only the text variables (not the MEDIA_URL), keeping MEDIA_URL first
+  const mediaUrlIndex = variables.indexOf('MEDIA_URL')
+  if (mediaUrlIndex !== -1) {
+    const mediaUrl = variables.splice(mediaUrlIndex, 1)[0]
+    variables.sort((a, b) => {
+      const aNum = parseInt(a.replace(/[{}]/g, ''))
+      const bNum = parseInt(b.replace(/[{}]/g, ''))
+      return aNum - bNum
+    })
+    variables.unshift(mediaUrl)
+  } else {
+    variables.sort((a, b) => {
+      const aNum = parseInt(a.replace(/[{}]/g, ''))
+      const bNum = parseInt(b.replace(/[{}]/g, ''))
+      return aNum - bNum
+    })
+  }
+  
+  console.log('🔍 [DEBUG] Final variables for template:', dbTemplate.name, variables)
 
   return {
     id: dbTemplate.id,
@@ -113,175 +182,199 @@ function processTemplate(dbTemplate: DatabaseTemplate): ProcessedTemplate {
   }
 }
 
-/**
- * Hook to fetch all templates (fallback when waba_id filtering isn't available)
- */
 export function useTemplates() {
-  console.log('🔍 [DEBUG] useTemplates hook called')
-  
+  const supabase = createClient()
+
   return useQuery({
-    queryKey: ['templates'],
-    queryFn: async (): Promise<ProcessedTemplate[]> => {
-      console.log('🔍 [DEBUG] useTemplates queryFn executing...')
-      
-      try {
-        const supabase = createClient()
-        console.log('🔍 [DEBUG] Supabase client created:', !!supabase)
-        
-        // Check authentication status
-        const { data: authData, error: authError } = await supabase.auth.getUser()
-        console.log('🔍 [DEBUG] Auth check:', { 
-          user: !!authData?.user, 
-          userId: authData?.user?.id,
-          error: authError 
-        })
-        
-        if (authError) {
-          console.error('🚨 [DEBUG] Auth error:', authError)
-          throw new Error(`Authentication failed: ${authError.message}`)
-        }
-        
-        if (!authData?.user) {
-          console.error('🚨 [DEBUG] No authenticated user')
-          throw new Error('User not authenticated')
-        }
-        
-        console.log('🔍 [DEBUG] Making database query...')
-        const { data, error } = await supabase
-          .from('message_templates_cache')
-          .select('*')
-          .eq('status_from_whatsapp', 'APPROVED')
-          .order('name')
-        
-        console.log('🔍 [DEBUG] Database query result:', {
-          data: data,
-          dataLength: data?.length,
-          error: error
-        })
-        
-        if (error) {
-          console.error('🚨 [DEBUG] Database error:', error)
-          throw new Error(`Failed to fetch templates: ${error.message}`)
-        }
-        
-        const processedTemplates = (data || []).map(processTemplate)
-        console.log('🔍 [DEBUG] Processed templates:', processedTemplates)
-        
-        return processedTemplates
-      } catch (error) {
-        console.error('🚨 [DEBUG] useTemplates error:', error)
-        throw error
+    queryKey: [TEMPLATES_QUERY_KEY],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('message_templates_cache')
+        .select('*')
+        .eq('status_from_whatsapp', 'APPROVED')
+        .eq('is_deleted', false) // Filter out deleted templates
+        .order('name')
+
+      if (error) {
+        throw new Error(`Failed to fetch templates: ${error.message}`)
       }
+
+      // Process templates for chat UI compatibility
+      return (data || []).map(processTemplate)
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: 30 * 1000, // 30 seconds
   })
 }
 
-/**
- * Hook to fetch templates for a specific WABA ID
- * Falls back to all templates if WABA ID filtering returns no results
- */
-export function useTemplatesByWaba(wabaId?: string | null) {
-  console.log('🔍 [DEBUG] useTemplatesByWaba hook called with wabaId:', wabaId)
-  
+// New hook for admin template management (returns raw MessageTemplate[])
+export function useAllTemplates() {
+  const supabase = createClient()
+
   return useQuery({
-    queryKey: ['templates', 'waba', wabaId],
-    queryFn: async (): Promise<ProcessedTemplate[]> => {
-      console.log('🔍 [DEBUG] useTemplatesByWaba queryFn executing...')
-      
-      try {
-        const supabase = createClient()
-        console.log('🔍 [DEBUG] Supabase client created:', !!supabase)
-        
-        // Check authentication status
-        const { data: authData, error: authError } = await supabase.auth.getUser()
-        console.log('🔍 [DEBUG] Auth check:', { 
-          user: !!authData?.user, 
-          userId: authData?.user?.id,
-          error: authError 
-        })
-        
-        if (authError) {
-          console.error('🚨 [DEBUG] Auth error:', authError)
-          throw new Error(`Authentication failed: ${authError.message}`)
-        }
-        
-        if (!authData?.user) {
-          console.error('🚨 [DEBUG] No authenticated user')
-          throw new Error('User not authenticated')
-        }
-        
-        // If no WABA ID provided, fetch all templates
-        if (!wabaId) {
-          console.log('🔍 [DEBUG] No WABA ID, fetching all templates...')
-          const { data, error } = await supabase
-            .from('message_templates_cache')
-            .select('*')
-            .eq('status_from_whatsapp', 'APPROVED')
-            .order('name')
-          
-          if (error) {
-            console.error('🚨 [DEBUG] Database error (all templates):', error)
-            throw new Error(`Failed to fetch templates: ${error.message}`)
-          }
-          
-          console.log('🔍 [DEBUG] All templates result:', { data, dataLength: data?.length })
-          return (data || []).map(processTemplate)
-        }
-        
-        // Try to fetch templates for specific WABA ID
-        console.log('🔍 [DEBUG] Fetching templates for WABA ID:', wabaId)
-        const { data: wabaTemplates, error: wabaError } = await supabase
-          .from('message_templates_cache')
-          .select('*')
-          .eq('waba_id', wabaId)
-          .eq('status_from_whatsapp', 'APPROVED')
-          .order('name')
-        
-        if (wabaError) {
-          console.error('🚨 [DEBUG] Database error (WABA templates):', wabaError)
-          throw new Error(`Failed to fetch WABA templates: ${wabaError.message}`)
-        }
-        
-        console.log('🔍 [DEBUG] WABA templates result:', { 
-          data: wabaTemplates, 
-          dataLength: wabaTemplates?.length 
-        })
-        
-        // If WABA-specific query returns results, use them
-        if (wabaTemplates && wabaTemplates.length > 0) {
-          console.log('🔍 [DEBUG] Using WABA-specific templates')
-          return wabaTemplates.map(processTemplate)
-        }
-        
-        // Fallback: fetch all approved templates (in case waba_id is not populated)
-        console.log(`🔍 [DEBUG] No templates found for WABA ID ${wabaId}, falling back to all templates`)
-        
-        const { data: allTemplates, error: allError } = await supabase
-          .from('message_templates_cache')
-          .select('*')
-          .eq('status_from_whatsapp', 'APPROVED')
-          .order('name')
-        
-        if (allError) {
-          console.error('🚨 [DEBUG] Database error (fallback templates):', allError)
-          throw new Error(`Failed to fetch fallback templates: ${allError.message}`)
-        }
-        
-        console.log('🔍 [DEBUG] Fallback templates result:', { 
-          data: allTemplates, 
-          dataLength: allTemplates?.length 
-        })
-        
-        return (allTemplates || []).map(processTemplate)
-      } catch (error) {
-        console.error('🚨 [DEBUG] useTemplatesByWaba error:', error)
-        throw error
+    queryKey: [TEMPLATES_QUERY_KEY, 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('message_templates_cache')
+        .select('*')
+        .eq('is_deleted', false) // Filter out deleted templates
+        .order('last_synced_at', { ascending: false })
+
+      if (error) {
+        throw new Error(`Failed to fetch templates: ${error.message}`)
       }
+
+      return data as MessageTemplate[]
     },
-    enabled: true, // Always enabled, handles empty wabaId internally
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: 30 * 1000, // 30 seconds
   })
+}
+
+export function useTemplatesByWaba(wabaId?: string) {
+  const supabase = createClient()
+
+  return useQuery({
+    queryKey: [TEMPLATES_QUERY_KEY, 'by-waba', wabaId],
+    queryFn: async () => {
+      if (!wabaId) return []
+
+      const { data, error } = await supabase
+        .from('message_templates_cache')
+        .select('*')
+        .eq('waba_id', wabaId)
+        .eq('is_deleted', false) // Filter out deleted templates
+        .order('last_synced_at', { ascending: false })
+
+      if (error) {
+        throw new Error(`Failed to fetch templates for WABA ${wabaId}: ${error.message}`)
+      }
+
+      return data as MessageTemplate[]
+    },
+    enabled: !!wabaId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useSyncTemplates() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: SyncTemplatesInput) => {
+      const response = await fetch('/api/sync-templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(input),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        throw new Error(`Failed to sync templates: ${errorData}`)
+      }
+
+      const result = await response.json()
+      return result
+    },
+    onSuccess: () => {
+      // Invalidate and refetch templates
+      queryClient.invalidateQueries({ queryKey: [TEMPLATES_QUERY_KEY] })
+    },
+  })
+}
+
+// Helper function to get template variables from components
+export function getTemplateVariables(template: MessageTemplate): string[] {
+  const variables: string[] = []
+  
+  try {
+    // Safe access to components with proper null checking
+    // Handle both { components: [...] } and [...] formats
+    let components: any[] = []
+    
+    if (template.components_json) {
+      if (Array.isArray(template.components_json)) {
+        // Direct array format: [...]
+        components = template.components_json
+      } else if (template.components_json.components && Array.isArray(template.components_json.components)) {
+        // Nested format: { components: [...] }
+        components = template.components_json.components
+      }
+    }
+    
+    components.forEach((component) => {
+      if (component && component.text) {
+        // Match {{1}}, {{2}}, etc.
+        const matches = component.text.match(/\{\{(\d+)\}\}/g)
+        if (matches) {
+          matches.forEach((match: string) => {
+            const variableNumber = match.replace(/[{}]/g, '')
+            if (!variables.includes(variableNumber)) {
+              variables.push(variableNumber)
+            }
+          })
+        }
+      }
+    })
+  } catch (error) {
+    console.warn('Error extracting template variables:', error)
+  }
+
+  return variables.sort((a, b) => parseInt(a) - parseInt(b))
+}
+
+// Helper function to format template variables for WhatsApp API
+export function formatTemplateVariablesForWhatsApp(
+  variables: string[], 
+  values: Record<string, string>
+): string[] {
+  // Sort variables by their numeric value ({{1}}, {{2}}, etc.)
+  const sortedVariables = variables.sort((a, b) => {
+    const aNum = parseInt(a.replace(/[{}]/g, ''))
+    const bNum = parseInt(b.replace(/[{}]/g, ''))
+    return aNum - bNum
+  })
+  
+  // Return ordered array of values
+  return sortedVariables.map(variable => values[variable] || '')
+}
+
+// Helper function to render template text with variables replaced
+export function renderTemplateText(text: string, variables: Record<string, string> = {}): string {
+  let renderedText = text
+  
+  Object.entries(variables).forEach(([key, value]) => {
+    const placeholder = `{{${key}}}`
+    renderedText = renderedText.replace(new RegExp(placeholder, 'g'), value || `{{${key}}}`)
+  })
+
+  return renderedText
+}
+
+// Helper function to get template status color
+export function getTemplateStatusColor(status: string): 'success' | 'warning' | 'error' | 'default' {
+  switch (status.toUpperCase()) {
+    case 'APPROVED':
+      return 'success'
+    case 'PENDING':
+      return 'warning'
+    case 'REJECTED':
+      return 'error'
+    default:
+      return 'default'
+  }
+}
+
+// Helper function to get template category color
+export function getTemplateCategoryColor(category: string): 'primary' | 'secondary' | 'default' {
+  switch (category.toUpperCase()) {
+    case 'MARKETING':
+      return 'primary'
+    case 'UTILITY':
+      return 'secondary'
+    default:
+      return 'default'
+  }
 } 

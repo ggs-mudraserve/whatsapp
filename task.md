@@ -103,12 +103,12 @@ Achievement: Automated system maintenance (auto-closure, rate limit reset) and r
 Working: Scheduled tasks run correctly; bulk campaigns are processed and logged with 'system' attribution.  
 [ ] 6. Frontend Admin Section  
 Subtasks:  
-* [ ] 6.1 Admin Dashboard UI (KPIs, recent campaigns, errors, links). (PRD Sec 6.2)  
-* [ ] 6.2 WhatsApp Number Management UI (CRUD for business_whatsapp_numbers): (PRD Sec 6.2)  
-* [ ] 6.2.1 Implement UI for listing, adding, editing, and deleting business_whatsapp_numbers.  
-* [ ] 6.2.2 Frontend performs CRUD operations using direct Supabase client calls.  
-* [ ] 6.2.3 Ensure robust RLS policies are in place in the database for the business_whatsapp_numbers table to restrict CUD operations to 'admin' role only.  
-* [ ] 6.3 Template Management UI (connects to sync-templates EF, previews templates). (PRD Sec 6.2)  
+* [x] 6.1 Admin Dashboard UI (KPIs, recent campaigns, errors, links). (PRD Sec 6.2)  
+* [x] 6.2 WhatsApp Number Management UI (CRUD for business_whatsapp_numbers): (PRD Sec 6.2)  
+* [x] 6.2.1 Implement UI for listing, adding, editing, and deleting business_whatsapp_numbers.  
+* [x] 6.2.2 Frontend performs CRUD operations using direct Supabase client calls.  
+* [x] 6.2.3 Ensure robust RLS policies are in place in the database for the business_whatsapp_numbers table to restrict CUD operations to 'admin' role only.  
+* [x] 6.3 Template Management UI (connects to sync-templates EF, previews templates). (PRD Sec 6.2)  
 * [ ] 6.4 Bulk Template Messaging UI (connects to initiate-bulk-send EF). (PRD Sec 6.2)  
 * [ ] 6.5 Bulk Campaigns List & Details UI. (PRD Sec 6.2)  
 * [ ] 6.6 Admin Chat Initiation UI: (PRD Sec 6.2, Sec 5)  
@@ -137,7 +137,7 @@ Achievement: Clear mechanism for chatbot messages to be logged, and handover pro
 Working: Chatbot messages (if logged by chatbot) and system messages are visually distinct; handover (if applicable) is functional.  
 [ ] 9. Project Finalization  
 Subtasks:  
-* [ ] 9.1 Database Cleanup:  
+* [x] 9.1 Database Cleanup:  
 * [x] 9.1.1 Deprecate or DROP the old public.insert_agent_message RPC from the database (if it exists and is no longer used).  
 * [ ] 9.2 Update All Documentation to v1.17 Final:  
 * [ ] 9.2.1 Ensure "Supabase Database Specification - v1.17" is complete and accurately reflects all RPCs, tables, ENUMs, and indexes.  
