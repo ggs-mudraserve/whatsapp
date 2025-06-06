@@ -89,18 +89,20 @@ Subtasks:
 * [x] 5.1.3 Ensure close_idle_conversations RPC returns IDs of closed conversations.  
 * [x] 5.1.4 EF iterates IDs and calls public.insert_message for each (sender: 'system', sender_id_override: SYSTEM_USER_ID, appropriate text, p_whatsapp_message_id as placeholder like crypto.randomUUID() or NULL).  
 * [x] 5.2 Implement/Verify daily-rate-limit-reset Edge Function (Updates business_whatsapp_numbers). (PRD Sec 4)  
-* [x] 5.3 Refactor/Implement bulk-send-processor Edge Function (v1.3.2 or later): (PRD Sec 4, Sec 10)  
+* [x] 5.3 Refactor/Implement bulk-send-processor Edge Function (v1.4 PRODUCTION-READY): (PRD Sec 4, Sec 10)  
 * [x] 5.3.1 Setup triggers (DB Webhook on message_queue INSERT and/or schedule).  
 * [x] 5.3.2 Fetch batch from message_queue with necessary joins.  
 * [x] 5.3.3 For each message:  
 * [x] 5.3.3.1 Mark as 'processing'.  
 * [x] 5.3.3.2 Call get_or_create_conversation_for_contact RPC (params: p_recipient_phone_e164, p_business_number_id, p_business_segment).  
-* [x] 5.3.3.3 Build WA payload using buildTemplateComponents.  
+* [x] 5.3.3.3 Build WA payload using buildTemplateComponents (FIXED: Now uses same logic as send-message function).  
 * [x] 5.3.3.4 Call sharedCallWhatsAppApi.  
 * [x] 5.3.3.5 On WA API success: Call public.insert_message (sender: 'system', sender_id_override: SYSTEM_USER_ID, actual whatsapp_message_id). Update bulk_send_details, delete from message_queue.  
 * [x] 5.3.3.6 On WA API failure: Implement retry/permanent failure logic for message_queue and bulk_send_details. Update business_whatsapp_numbers for rate limits.  
+* [x] 5.3.4 **BULK MESSAGING FULLY FUNCTIONAL**: Tested and verified working with real WhatsApp message delivery  
+* [x] 5.3.5 **PRODUCTION DEPLOYMENT COMPLETE**: Edge Function v1.6 deployed with all critical fixes (atomic idempotency, proper error handling, correct API signatures)  
 Achievement: Automated system maintenance (auto-closure, rate limit reset) and reliable bulk message processing are functional. All system-generated messages are logged via public.insert_message.  
-Working: Scheduled tasks run correctly; bulk campaigns are processed and logged with 'system' attribution.  
+Working: Scheduled tasks run correctly; bulk campaigns are processed and logged with 'system' attribution. **PRODUCTION-READY BULK MESSAGING SYSTEM FULLY OPERATIONAL**.  
 [ ] 6. Frontend Admin Section  
 Subtasks:  
 * [x] 6.1 Admin Dashboard UI (KPIs, recent campaigns, errors, links). (PRD Sec 6.2)  
@@ -109,8 +111,8 @@ Subtasks:
 * [x] 6.2.2 Frontend performs CRUD operations using direct Supabase client calls.  
 * [x] 6.2.3 Ensure robust RLS policies are in place in the database for the business_whatsapp_numbers table to restrict CUD operations to 'admin' role only.  
 * [x] 6.3 Template Management UI (connects to sync-templates EF, previews templates). (PRD Sec 6.2)  
-* [ ] 6.4 Bulk Template Messaging UI (connects to initiate-bulk-send EF). (PRD Sec 6.2)  
-* [ ] 6.5 Bulk Campaigns List & Details UI. (PRD Sec 6.2)  
+* [x] 6.4 Bulk Template Messaging UI (connects to initiate-bulk-send EF). (PRD Sec 6.2)  
+* [x] 6.5 Bulk Campaigns List & Details UI. (PRD Sec 6.2)  
 * [ ] 6.6 Admin Chat Initiation UI: (PRD Sec 6.2, Sec 5)  
 * [ ] 6.6.1 UI for admin to input customer phone (10-digit or E.164), select "Send From" Business WhatsApp Number, choose template, fill variables.  
 * [ ] 6.6.2 Frontend normalizes phone number to E.164.  

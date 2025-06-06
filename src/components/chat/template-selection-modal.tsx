@@ -439,7 +439,7 @@ export function TemplateSelectionModal({
             <Stack spacing={3}>
               {selectedTemplate.variables.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  This template doesn't have any variables. You can send it directly.
+                  This template doesn&apos;t have any variables. You can send it directly.
                 </Typography>
               ) : (
                 selectedTemplate.variables.map((variable, index) => {

@@ -41,6 +41,7 @@ export function MessageItem({
   isLastInGroup = false 
 }: MessageItemProps) {
   const theme = useTheme()
+  const { data: templates } = useTemplates()
 
   // Determine message styling based on sender type
   const getMessageStyling = () => {
@@ -254,7 +255,6 @@ export function MessageItem({
     if (message.content_type !== 'template') return null
 
     // Get template data to render the preview
-    const { data: templates } = useTemplates()
     const template = templates?.find(t => 
       t.name === message.template_name_used && 
       t.language === 'en' // Assuming English for now, could be dynamic

@@ -63,7 +63,7 @@ const navigationItems: NavigationItem[] = [
   },
   {
     label: 'Bulk Campaigns',
-    path: '/admin/campaigns',
+            path: '/admin/bulk-campaigns',
     icon: <CampaignOutlined />,
     roles: ['admin'],
   },
