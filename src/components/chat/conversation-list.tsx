@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { useAuthStore } from '@/lib/zustand/auth-store'
+import { useTeamMembers } from '@/lib/hooks/use-team-members'
 import type { ConversationWithDetails } from '@/lib/types/chat'
 
 interface ConversationListProps {
@@ -56,23 +57,20 @@ export function ConversationList({
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [agentFilter, setAgentFilter] = useState<'all' | 'assigned' | 'unassigned' | string>('all')
 
-  // Get unique agents from conversations for filter dropdown (Team Leaders only)
+  // Fetch team members for team leaders
+  const { data: teamMembers = [], isLoading: isLoadingTeamMembers } = useTeamMembers()
+
+  // Get agents for filter dropdown (Team Leaders only)
+  // Now shows ALL agents in the team, not just those with existing conversations
   const availableAgents = useMemo(() => {
     if (user?.role !== 'team_leader') return []
     
-    const agents = new Map<string, { id: string; name: string }>()
-    
-    conversations.forEach(conv => {
-      if (conv.assigned_agent) {
-        agents.set(conv.assigned_agent.id, {
-          id: conv.assigned_agent.id,
-          name: `${conv.assigned_agent.first_name || ''} ${conv.assigned_agent.last_name || ''}`.trim() || 'Unknown Agent'
-        })
-      }
-    })
-    
-    return Array.from(agents.values())
-  }, [conversations, user?.role])
+    // Use team members from the hook, which includes all agents in the team
+    return teamMembers.map(member => ({
+      id: member.id,
+      name: `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Unknown Agent'
+    }))
+  }, [teamMembers, user?.role])
 
   // Filter and search conversations
   const filteredConversations = useMemo(() => {

@@ -12,6 +12,13 @@ This application provides a comprehensive front-end interface for businesses to 
 - **Admin Dashboard**: Manage WhatsApp business numbers, templates, and user roles
 - **Multi-role Support**: Admin, Team Leader, and Agent role-based access
 - **AI Chatbot Integration**: Seamless chatbot handover capabilities
+- **Authentication & Security**: Complete JWT-based authentication with role-based access control and automatic session management
+- **Inactivity Timer System**: Sophisticated 10-minute inactivity timeout with the following features:
+  - **Activity Detection**: Monitors mouse movement, keyboard input, touch events, scrolling, and clicks
+  - **Warning System**: Shows a warning 1 minute before automatic logout (at 9 minutes of inactivity)
+  - **Tab Visibility Handling**: Pauses timers when tab is not visible, resumes when tab becomes active
+  - **Performance Optimized**: Throttled event handling to prevent excessive timer resets
+  - **User-Friendly**: Clear warning message with option to extend session through any user interaction
 
 ## 🛠 Tech Stack
 
@@ -226,6 +233,28 @@ whatsapp-cloud-api-frontend/
 - Component-level protected routes
 - Role-based access control
 - Automatic redirects for unauthorized access
+
+### Inactivity Timer System
+
+The application includes a sophisticated inactivity timer system that automatically logs out users after 10 minutes of inactivity:
+
+- **10-minute timeout**: Users are automatically logged out after 10 minutes of inactivity
+- **1-minute warning**: A warning appears 1 minute before logout (at 9 minutes)
+- **Activity monitoring**: Detects user activity through various interaction types
+- **Tab visibility awareness**: Pauses timers when the browser tab is not visible
+- **Performance optimized**: Uses throttling to prevent excessive timer resets
+- **Immediate redirect**: Users are immediately redirected to the login page upon logout
+
+### Logout Redirect System
+
+The application ensures that users are immediately redirected to the login page when logged out:
+
+- **Manual logout**: When users click "Sign Out", they are immediately redirected to `/login`
+- **Automatic logout**: When the inactivity timer triggers logout, users are immediately redirected
+- **Session expiry**: When sessions expire or become invalid, users are redirected to login
+- **Protected route access**: Multiple layers of protection ensure unauthenticated users cannot access protected content
+
+The system provides immediate feedback and ensures users cannot remain on protected pages after logout.
 
 ## 🧪 Development Guidelines
 

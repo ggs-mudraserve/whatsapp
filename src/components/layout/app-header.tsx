@@ -42,6 +42,7 @@ export function AppHeader({ onMenuClick, onSidebarToggle, sidebarCollapsed }: Ap
 
   const handleSignOut = async () => {
     handleProfileMenuClose()
+    // signOut with default redirectToLogin=true will handle the redirect
     await signOut()
   }
 

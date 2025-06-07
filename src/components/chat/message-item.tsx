@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import NextImage from 'next/image'
 import { 
   Box, 
   Typography, 
@@ -185,15 +186,18 @@ export function MessageItem({
     if (message.content_type === 'image') {
       return (
         <Box sx={{ position: 'relative', maxWidth: '100%' }}>
-          <img
+          <NextImage
             src={message.media_url || '#'}
             alt="Shared image"
+            width={400}
+            height={300}
             style={{
               maxWidth: '100%',
               height: 'auto',
               borderRadius: theme.spacing(1),
               display: 'block'
             }}
+            unoptimized={!message.media_url || message.media_url.startsWith('blob:')}
           />
           {message.sender_type === 'customer' && message.customer_media_whatsapp_id && (
             <IconButton
@@ -288,9 +292,11 @@ export function MessageItem({
           {/* Show header image if available */}
           {message.media_url && (
             <Box sx={{ mb: 2 }}>
-              <img
+              <NextImage
                 src={message.media_url}
                 alt="Template header image"
+                width={400}
+                height={200}
                 style={{
                   maxWidth: '100%',
                   maxHeight: '200px',
@@ -298,6 +304,7 @@ export function MessageItem({
                   objectFit: 'cover',
                   display: 'block'
                 }}
+                unoptimized={!message.media_url || message.media_url.startsWith('blob:')}
                 onError={(e) => {
                   // Handle broken image
                   e.currentTarget.style.display = 'none'
@@ -333,9 +340,11 @@ export function MessageItem({
         {/* Show header image if available (even in fallback) */}
         {message.media_url && (
           <Box sx={{ mb: 2 }}>
-            <img
+            <NextImage
               src={message.media_url}
               alt="Template header image"
+              width={400}
+              height={200}
               style={{
                 maxWidth: '100%',
                 maxHeight: '200px',
@@ -343,6 +352,7 @@ export function MessageItem({
                 objectFit: 'cover',
                 display: 'block'
               }}
+              unoptimized={!message.media_url || message.media_url.startsWith('blob:')}
               onError={(e) => {
                 // Handle broken image
                 e.currentTarget.style.display = 'none'

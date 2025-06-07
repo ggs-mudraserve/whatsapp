@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 
 interface AuthActions {
   signIn: (credentials: LoginCredentials) => Promise<{ error: AuthError | null }>
-  signOut: () => Promise<void>
+  signOut: (redirectToLogin?: boolean) => Promise<void>
   setUser: (user: UserProfile | null) => void
   setSession: (session: any) => void
   setLoading: (loading: boolean) => void
@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthStore>()(
       }
     },
 
-    signOut: async () => {
+    signOut: async (redirectToLogin = true) => {
       set({ isLoading: true })
       
       try {
@@ -78,6 +78,12 @@ export const useAuthStore = create<AuthStore>()(
           isAuthenticated: false,
           isLoading: false,
         })
+
+        // Redirect to login if requested (default behavior)
+        if (redirectToLogin && typeof window !== 'undefined') {
+          // Use window.location for immediate redirect that bypasses React Router state
+          window.location.replace('/login')
+        }
       } catch (err) {
         console.error('Sign out error:', err)
         set({ isLoading: false })

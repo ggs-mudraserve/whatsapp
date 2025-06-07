@@ -103,7 +103,7 @@ Subtasks:
 * [x] 5.3.5 **PRODUCTION DEPLOYMENT COMPLETE**: Edge Function v1.6 deployed with all critical fixes (atomic idempotency, proper error handling, correct API signatures)  
 Achievement: Automated system maintenance (auto-closure, rate limit reset) and reliable bulk message processing are functional. All system-generated messages are logged via public.insert_message.  
 Working: Scheduled tasks run correctly; bulk campaigns are processed and logged with 'system' attribution. **PRODUCTION-READY BULK MESSAGING SYSTEM FULLY OPERATIONAL**.  
-[ ] 6. Frontend Admin Section  
+[x] 6. Frontend Admin Section  
 Subtasks:  
 * [x] 6.1 Admin Dashboard UI (KPIs, recent campaigns, errors, links). (PRD Sec 6.2)  
 * [x] 6.2 WhatsApp Number Management UI (CRUD for business_whatsapp_numbers): (PRD Sec 6.2)  
@@ -123,9 +123,9 @@ Subtasks:
 * [x] 6.9 Error Log Viewer UI (for application_error_logs). (PRD Sec 6.2, Sec 6.7)  
 Achievement: A fully functional admin interface for managing all aspects of the WhatsApp application.  
 Working: Admins can perform all their designated tasks.  
-[ ] 7. Frontend Team Leader Enhancements  
+[x] 7. Frontend Team Leader Enhancements  
 Subtasks:  
-* [ ] 7.1 Team Leader Specific Filters in Chat List (e.g., filter by assigned agent within their team). (PRD Sec 6.3)  
+* [x] 7.1 Team Leader Specific Filters in Chat List (e.g., filter by assigned agent within their team). (PRD Sec 6.3)  
 * [x] 7.2 Verify RLS for Team Leaders ensures they only see relevant conversations. (PRD Sec 6.1, Sec 3)  
 Achievement: Team Leaders have appropriate views and controls for their teams.  
 Working: Team Leader interface is functional and secure.  

@@ -4,6 +4,7 @@ import { Box, Toolbar } from '@mui/material'
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
 import { useLayoutStore } from '@/lib/zustand/layout-store'
+import { useAuthRedirect } from '@/lib/hooks/use-auth-redirect'
 
 const DRAWER_WIDTH = 280
 const COLLAPSED_WIDTH = 72
@@ -14,6 +15,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { sidebarCollapsed, mobileOpen, toggleSidebar, toggleMobile } = useLayoutStore()
+  
+  // Ensure immediate redirect to login when user is logged out
+  useAuthRedirect()
 
   const sidebarWidth = sidebarCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH
 

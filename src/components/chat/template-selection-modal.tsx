@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
+import NextImage from 'next/image'
 import {
   Dialog,
   DialogTitle,
@@ -234,15 +235,18 @@ export function TemplateSelectionModal({
           {/* Show header image if provided */}
           {hasMediaUrl && mediaUrl && (
             <Box sx={{ mb: 2 }}>
-              <img
+              <NextImage
                 src={mediaUrl}
                 alt="Template header image"
+                width={400}
+                height={200}
                 style={{
                   maxWidth: '100%',
                   maxHeight: '200px',
                   borderRadius: '8px',
                   objectFit: 'cover'
                 }}
+                unoptimized={!mediaUrl || mediaUrl.startsWith('blob:')}
                 onError={(e) => {
                   // Handle broken image
                   e.currentTarget.style.display = 'none'
