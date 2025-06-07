@@ -22,8 +22,8 @@ interface BulkCampaign {
   total_recipients: number
   created_at: string
   updated_at: string
-  sent_count: number
-  failed_count: number
+  sent_count: number | string  // Can be BIGINT from database
+  failed_count: number | string  // Can be BIGINT from database
 }
 
 interface RecentCampaignsProps {
@@ -114,17 +114,17 @@ export function RecentCampaigns({ campaigns, isLoading }: RecentCampaignsProps) 
                   <TableCell align="right">
                     <Typography 
                       variant="body2" 
-                      color={campaign.sent_count > 0 ? 'success.main' : 'text.secondary'}
+                      color={Number(campaign.sent_count) > 0 ? 'success.main' : 'text.secondary'}
                     >
-                      {campaign.sent_count.toLocaleString()}
+                      {Number(campaign.sent_count).toLocaleString()}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
                     <Typography 
                       variant="body2" 
-                      color={campaign.failed_count > 0 ? 'error.main' : 'text.secondary'}
+                      color={Number(campaign.failed_count) > 0 ? 'error.main' : 'text.secondary'}
                     >
-                      {campaign.failed_count.toLocaleString()}
+                      {Number(campaign.failed_count).toLocaleString()}
                     </Typography>
                   </TableCell>
                   <TableCell>

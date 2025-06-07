@@ -14,8 +14,8 @@ interface BulkCampaign {
   total_recipients: number
   created_at: string
   updated_at: string
-  sent_count: number
-  failed_count: number
+  sent_count: number | string  // Can be BIGINT from database
+  failed_count: number | string  // Can be BIGINT from database
 }
 
 interface ErrorLog {
@@ -75,7 +75,7 @@ export function useAdminDashboard() {
 
         // Fetch recent bulk campaigns with their success/failure counts
         const { data: recentCampaignsData, error: campaignsError } = await supabase
-          .rpc('get_recent_bulk_campaigns_with_stats', { limit_count: 5 })
+          .rpc('get_recent_bulk_campaigns_with_stats', { limit_count: 10 })
 
         let recentCampaigns: BulkCampaign[] = []
 
@@ -86,7 +86,7 @@ export function useAdminDashboard() {
             .from('bulk_sends')
             .select('id, campaign_name, status, total_recipients, created_at, updated_at')
             .order('created_at', { ascending: false })
-            .limit(5)
+            .limit(10)
           
           if (basicError) throw basicError
           

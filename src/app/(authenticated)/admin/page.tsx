@@ -1,16 +1,23 @@
 'use client'
 
+import { useState } from 'react'
 import { Typography, Box, Grid, Alert, Button } from '@mui/material'
-import { Refresh as RefreshIcon } from '@mui/icons-material'
+import { Refresh as RefreshIcon, Chat as ChatIcon } from '@mui/icons-material'
 import { ProtectedRoute } from '@/components/auth/protected-route'
-import { DashboardKPIs, RecentCampaigns, ErrorLogs } from '@/components/admin'
+import { DashboardKPIs, RecentCampaigns, ErrorLogs, AdminChatInitiationModal } from '@/components/admin'
 import { useAdminDashboard } from '@/lib/hooks/use-admin-dashboard'
 
 export default function AdminDashboardPage() {
   const { data, isLoading, error, refetch, isRefetching } = useAdminDashboard()
+  const [showChatModal, setShowChatModal] = useState(false)
 
   const handleRefresh = () => {
     refetch()
+  }
+
+  const handleChatInitiationSuccess = (conversationId: string) => {
+    console.log('Chat initiated successfully for conversation:', conversationId)
+    // Could add navigation to the conversation or show a success message
   }
 
   return (
@@ -63,6 +70,16 @@ export default function AdminDashboardPage() {
           </Typography>
           <Grid container spacing={2}>
             <Grid item>
+              <Button 
+                variant="contained" 
+                startIcon={<ChatIcon />}
+                onClick={() => setShowChatModal(true)}
+                color="primary"
+              >
+                Initiate Customer Chat
+              </Button>
+            </Grid>
+            <Grid item>
               <Button variant="contained" href="/admin/whatsapp-numbers">
                 Manage WhatsApp Numbers
               </Button>
@@ -94,6 +111,13 @@ export default function AdminDashboardPage() {
             </Grid>
           </Grid>
         </Box>
+
+        {/* Chat Initiation Modal */}
+        <AdminChatInitiationModal
+          open={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          onSuccess={handleChatInitiationSuccess}
+        />
       </Box>
     </ProtectedRoute>
   )

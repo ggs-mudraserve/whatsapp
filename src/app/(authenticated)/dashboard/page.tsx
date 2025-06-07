@@ -1,15 +1,28 @@
+'use client'
+
 import { Typography, Paper, Box, Grid } from '@mui/material'
 import { ProtectedRoute } from '@/components/auth/protected-route'
+import { useAuthStore } from '@/lib/zustand/auth-store'
+import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
+  const { user } = useAuthStore()
+  const router = useRouter()
+
+  // Redirect non-admin users to conversations (backup to middleware)
+  if (user && user.role !== 'admin') {
+    router.push('/conversations')
+    return null
+  }
+
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={['admin']}>
       <Box>
         <Typography variant="h4" component="h1" gutterBottom>
-          Dashboard
+          Admin Dashboard
         </Typography>
         <Typography variant="body1" color="text.secondary" gutterBottom>
-          Welcome to the WhatsApp Cloud API Front-End Dashboard
+          Welcome to the WhatsApp Cloud API Administrative Dashboard
         </Typography>
         
         <Paper sx={{ p: 2, mb: 3, backgroundColor: 'info.light', color: 'info.contrastText' }}>

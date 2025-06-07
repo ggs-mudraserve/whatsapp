@@ -114,11 +114,11 @@ Subtasks:
 * [x] 6.4 Bulk Template Messaging UI (connects to initiate-bulk-send EF). (PRD Sec 6.2)  
 * [x] 6.5 Bulk Campaigns List & Details UI. (PRD Sec 6.2)  
 * [ ] 6.6 Admin Chat Initiation UI: (PRD Sec 6.2, Sec 5)  
-* [ ] 6.6.1 UI for admin to input customer phone (10-digit or E.164), select "Send From" Business WhatsApp Number, choose template, fill variables.  
-* [ ] 6.6.2 Frontend normalizes phone number to E.164.  
-* [ ] 6.6.3 Frontend calls public.get_or_create_conversation_for_contact RPC to get/create conversation_id.  
-* [ ] 6.6.4 Frontend calls send-message EF with the conversation_id and message details.  
-* [ ] 6.7 Chat Assignment Management UI (Admin) (connects to assign-conversation & trigger-round-robin EFs). (PRD Sec 6.2)  
+* [x] 6.6.1 UI for admin to input customer phone (10-digit or E.164), select "Send From" Business WhatsApp Number, choose template, fill variables.  
+* [x] 6.6.2 Frontend normalizes phone number to E.164.  
+* [x] 6.6.3 Frontend calls public.get_or_create_conversation_for_contact RPC to get/create conversation_id.  
+* [x] 6.6.4 Frontend calls send-message EF with the conversation_id and message details.  
+* [x] 6.7 Chat Assignment Management UI (Admin) (connects to assign-conversation & trigger-round-robin EFs). (PRD Sec 6.2)  
 * [ ] 6.8 User Management (Read-only view of profile table). (PRD Sec 6.2)  
 * [ ] 6.9 Error Log Viewer UI (for application_error_logs). (PRD Sec 6.2, Sec 6.7)  
 Achievement: A fully functional admin interface for managing all aspects of the WhatsApp application.  
@@ -126,7 +126,7 @@ Working: Admins can perform all their designated tasks.
 [ ] 7. Frontend Team Leader Enhancements  
 Subtasks:  
 * [ ] 7.1 Team Leader Specific Filters in Chat List (e.g., filter by assigned agent within their team). (PRD Sec 6.3)  
-* [ ] 7.2 Verify RLS for Team Leaders ensures they only see relevant conversations. (PRD Sec 6.1, Sec 3)  
+* [x] 7.2 Verify RLS for Team Leaders ensures they only see relevant conversations. (PRD Sec 6.1, Sec 3)  
 Achievement: Team Leaders have appropriate views and controls for their teams.  
 Working: Team Leader interface is functional and secure.  
 [ ] 8. AI Chatbot Integration & Finalization  
@@ -151,7 +151,7 @@ Subtasks:
 * [ ] 9.3.3 Verify data integrity in the database.  
 * [ ] 9.3.4 Test error handling and recovery.  
 * [ ] 9.3.5 Test real-time features.  
-* [ ] 9.3.6 Test admin direct DB interactions for business_whatsapp_numbers ensuring RLS works as expected.  
+* [x] 9.3.6 Test admin direct DB interactions for business_whatsapp_numbers ensuring RLS works as expected.  
 * [ ] 9.3.7 Test admin chat initiation flow.  
 Achievement: A fully tested, documented, and clean application ready for deployment or handover.  
 Working: A production-ready application.

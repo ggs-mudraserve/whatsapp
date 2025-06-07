@@ -4,20 +4,22 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, CircularProgress } from '@mui/material'
 import { useAuthStore } from '@/lib/zustand/auth-store'
+import { getDefaultLandingPage } from '@/lib/utils/auth'
 
 export default function HomePage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const { isAuthenticated, isLoading, user } = useAuthStore()
 
   useEffect(() => {
     if (!isLoading) {
-      if (isAuthenticated) {
-        router.push('/dashboard')
+      if (isAuthenticated && user) {
+        const defaultPage = getDefaultLandingPage(user.role)
+        router.push(defaultPage)
       } else {
         router.push('/login')
       }
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, user, router])
 
   return (
     <Box

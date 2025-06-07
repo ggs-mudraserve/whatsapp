@@ -13,11 +13,12 @@ import {
   CircularProgress,
 } from '@mui/material'
 import { useAuthStore } from '@/lib/zustand/auth-store'
+import { getDefaultLandingPage } from '@/lib/utils/auth'
 import type { LoginCredentials } from '@/lib/types/auth'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { signIn, isLoading, isAuthenticated } = useAuthStore()
+  const { signIn, isLoading, isAuthenticated, user } = useAuthStore()
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -25,8 +26,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Redirect if already authenticated
-  if (isAuthenticated) {
-    router.push('/dashboard')
+  if (isAuthenticated && user) {
+    const defaultPage = getDefaultLandingPage(user.role)
+    router.push(defaultPage)
     return null
   }
 
@@ -61,7 +63,15 @@ export default function LoginPage() {
     if (authError) {
       setError(authError.message)
     } else {
-      router.push('/dashboard')
+      // Get the current user from the store to determine redirect
+      const currentUser = useAuthStore.getState().user
+      if (currentUser) {
+        const defaultPage = getDefaultLandingPage(currentUser.role)
+        router.push(defaultPage)
+      } else {
+        // Fallback to conversations if user data isn't available yet
+        router.push('/conversations')
+      }
     }
   }
 

@@ -40,7 +40,7 @@ const navigationItems: NavigationItem[] = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: <Dashboard />,
-    roles: ['admin', 'team_leader', 'agent'],
+    roles: ['admin'],
   },
   {
     label: 'Conversations',

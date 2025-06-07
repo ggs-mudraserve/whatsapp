@@ -42,7 +42,46 @@ export function useBulkCampaigns() {
         throw new Error(`Failed to fetch bulk campaigns: ${error.message}`)
       }
 
-      return data as (BulkSendRecord & {
+      // Get progress data for each campaign
+      const campaignsWithProgress = await Promise.all(
+        data.map(async (campaign) => {
+          const { data: detailsData, error: detailsError } = await supabase
+            .from('bulk_send_details')
+            .select('status')
+            .eq('bulk_send_id', campaign.id)
+
+          if (detailsError) {
+            console.warn(`Failed to fetch details for campaign ${campaign.id}:`, detailsError)
+            return {
+              ...campaign,
+              successful_sends: 0,
+              failed_sends: 0,
+              pending_sends: campaign.total_recipients,
+              processing_sends: 0
+            }
+          }
+
+          const statusCounts = detailsData.reduce((acc, detail) => {
+            acc[detail.status] = (acc[detail.status] || 0) + 1
+            return acc
+          }, {} as Record<string, number>)
+
+          const successful_sends = statusCounts.sent || 0
+          const failed_sends = (statusCounts.failed || 0) + (statusCounts.skipped || 0)
+          const pending_sends = statusCounts.pending || 0
+          const processing_sends = 0
+
+          return {
+            ...campaign,
+            successful_sends,
+            failed_sends,
+            pending_sends,
+            processing_sends
+          }
+        })
+      )
+
+      return campaignsWithProgress as (BulkSendRecord & {
         business_whatsapp_numbers: {
           id: string
           phone_number: string
@@ -56,6 +95,8 @@ export function useBulkCampaigns() {
         } | null
       })[]
     },
+    // Refetch every 30 seconds to get status updates
+    refetchInterval: 30000,
   })
 }
 
