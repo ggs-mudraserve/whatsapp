@@ -119,8 +119,8 @@ Subtasks:
 * [x] 6.6.3 Frontend calls public.get_or_create_conversation_for_contact RPC to get/create conversation_id.  
 * [x] 6.6.4 Frontend calls send-message EF with the conversation_id and message details.  
 * [x] 6.7 Chat Assignment Management UI (Admin) (connects to assign-conversation & trigger-round-robin EFs). (PRD Sec 6.2)  
-* [ ] 6.8 User Management (Read-only view of profile table). (PRD Sec 6.2)  
-* [ ] 6.9 Error Log Viewer UI (for application_error_logs). (PRD Sec 6.2, Sec 6.7)  
+* [x] 6.8 User Management (Read-only view of profile table). (PRD Sec 6.2)  
+* [x] 6.9 Error Log Viewer UI (for application_error_logs). (PRD Sec 6.2, Sec 6.7)  
 Achievement: A fully functional admin interface for managing all aspects of the WhatsApp application.  
 Working: Admins can perform all their designated tasks.  
 [ ] 7. Frontend Team Leader Enhancements  

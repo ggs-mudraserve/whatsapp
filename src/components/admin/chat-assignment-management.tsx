@@ -292,16 +292,18 @@ export function ChatAssignmentManagement() {
               >
                 Refresh
               </Button>
-              {unassignedCount > 0 && (
-                <Button
-                  onClick={handleTriggerRoundRobin}
-                  startIcon={<AutoAwesome />}
-                  variant="contained"
-                  disabled={triggerRoundRobinMutation.isPending}
-                >
-                  {triggerRoundRobinMutation.isPending ? 'Assigning...' : 'Round-Robin Assignment'}
-                </Button>
-              )}
+              <Tooltip title={unassignedCount === 0 ? 'No unassigned conversations' : 'Assign unassigned conversations via round-robin'}>
+                <span>
+                  <Button
+                    onClick={handleTriggerRoundRobin}
+                    startIcon={<AutoAwesome />}
+                    variant="contained"
+                    disabled={triggerRoundRobinMutation.isPending || unassignedCount === 0}
+                  >
+                    {triggerRoundRobinMutation.isPending ? 'Assigning...' : `Round-Robin Assignment (${unassignedCount})`}
+                  </Button>
+                </span>
+              </Tooltip>
             </Stack>
           </Box>
 
